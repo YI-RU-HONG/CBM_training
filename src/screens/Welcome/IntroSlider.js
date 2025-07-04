@@ -15,7 +15,7 @@ const slides = [
     key: '2',
     title: "What Is CBM?",
     description: "It's a simple, science-backed training that helps you change the way your brain reacts to negative or stressful situations.",
-    image: require('../../../assets/images/what is CBM.png'),
+    image3: require('../../../assets/images/what is CBM.png'),
   },
   {
     key: '3',
@@ -79,7 +79,7 @@ export default function IntroSlider() {
             style={[
               styles.image2,
               {
-                left: SCREEN_WIDTH * 0.095,
+                // left: SCREEN_WIDTH * 0.095,
                 right: 0,
                 top: SCREEN_HEIGHT * 0.04,
                 height: SCREEN_HEIGHT * 0.6,
@@ -134,8 +134,23 @@ export default function IntroSlider() {
               style={[
                 styles.image,
                 {
-                  left: SCREEN_WIDTH * 0.08,
                   right: 0,
+                  // left: SCREEN_WIDTH * 0.08,
+                  top: SCREEN_HEIGHT * 0.25 + 50, 
+                  height: SCREEN_HEIGHT * 0.6,
+                },
+              ]}
+              resizeMode="contain" 
+            />
+          )}
+          {item.image3 && (
+            <Image
+              source={item.image3}
+              style={[
+                styles.image3,
+                {
+                  // right: SCREEN_WIDTH * 0.05,
+                  left: SCREEN_WIDTH * 0.0005,
                   top: SCREEN_HEIGHT * 0.25 + 50, 
                   height: SCREEN_HEIGHT * 0.6,
                 },
@@ -149,7 +164,7 @@ export default function IntroSlider() {
               style={[
                 styles.image1,
                 {
-                  left: SCREEN_WIDTH * 0.095,
+                  left: SCREEN_WIDTH * 0.12,
                   right: 0,
                   top: SCREEN_HEIGHT * 0.30, 
                   height: SCREEN_HEIGHT * 0.6,
@@ -158,7 +173,7 @@ export default function IntroSlider() {
               resizeMode="contain" 
             />
           )}
-            {item.image2 && (
+            {/* {item.image2 && (
             <Image
               source={item.image2}
               style={[
@@ -172,7 +187,7 @@ export default function IntroSlider() {
               ]}
               resizeMode="contain" 
             />
-          )}
+          )} */}
         </>
       )}
     </View>
@@ -224,7 +239,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontFamily: 'ArialRoundedMTBold-Regular',
+    fontFamily: 'ArialRoundedMTBold',
     fontWeight: 'bold',
     textAlign: 'center',
     position: 'absolute',
@@ -233,7 +248,7 @@ const styles = StyleSheet.create({
   },
   description: {
     color: '#fff',
-    fontFamily: 'ArialUnicodeMS-Regular',
+    fontFamily: 'ArialUnicodeMS',
     textAlign: 'center',
     position: 'absolute',
     left: SCREEN_WIDTH * 0.095, // 37/390

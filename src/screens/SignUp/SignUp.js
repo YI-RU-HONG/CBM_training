@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Dimensions, Platform, KeyboardAvoidingView, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+  import { auth } from '../../services/firebase.js';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,8 +26,13 @@ export default function SignUpScreen({ navigation }) {
   // 註冊並設置登入狀態
   const handleSignUp = async () => {
     if (!isFilled) return;
-    await AsyncStorage.setItem('isLoggedIn', 'true');
-    navigation.replace('HomePage');
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      await AsyncStorage.setItem('isLoggedIn', 'true');
+      navigation.replace('HomePage');
+    } catch (error) {
+      alert(error.message || '註冊失敗，請稍後再試');
+    }
   };
 
   return (
@@ -50,7 +57,7 @@ export default function SignUpScreen({ navigation }) {
           <Text style={styles.label}>User name</Text>
           <TextInput
             style={styles.input}
-            placeholder="Value"
+            placeholder=""
             placeholderTextColor="#BDBDBD"
             value={username}
             onChangeText={setUsername}
@@ -59,7 +66,7 @@ export default function SignUpScreen({ navigation }) {
           <Text style={[styles.label, { marginTop: 24 }]}>Email</Text>
           <TextInput
             style={styles.input}
-            placeholder="Value"
+            placeholder=""
             placeholderTextColor="#BDBDBD"
             value={email}
             onChangeText={setEmail}
@@ -70,7 +77,7 @@ export default function SignUpScreen({ navigation }) {
           <Text style={[styles.label, { marginTop: 24 }]}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Value"
+            placeholder=""
             placeholderTextColor="#BDBDBD"
             value={password}
             onChangeText={setPassword}

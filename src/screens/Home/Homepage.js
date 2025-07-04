@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { fetchGithubAIResponse } from '../../services/openai.js';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Animated } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,8 +61,9 @@ export default function HomePage({ navigation }) {
         {stamps.map((item, idx) => (
           <TouchableOpacity
             key={item.date}
+            testID={`stamp-${idx}`}
             style={[styles.dateNodeWrap, { marginVertical: SCREEN_HEIGHT * 0.036 }]} // 60/844
-            onPress={() => navigation.navigate('Happiness')}
+            onPress={() => navigation.navigate('Emotion')}
           >
             <Image
               source={require('../../../assets/images/HomePage/Stamp.png')}
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
   },
   starNum: {
     color: 'rgb(255,244,157)',
-    fontFamily: 'PottaOne-Regular',
+    fontFamily: 'PottaOne',
     fontSize: SCREEN_WIDTH * 0.09,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -271,7 +273,7 @@ const styles = StyleSheet.create({
     color: '#41424A',
     fontSize: SCREEN_WIDTH * 0.045,
     fontWeight: '500',
-    fontFamily: 'ArialUnicodeMS-Regular',
+    fontFamily: 'ArialUnicodeMS',
   },
   moodee: {
     width: SCREEN_WIDTH * 0.45,

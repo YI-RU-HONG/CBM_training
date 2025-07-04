@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontFamily: 'ArialRoundedMTBold-Regular',
+    fontFamily: 'ArialRoundedMTBold',
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: SCREEN_HEIGHT * 0.033,
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#fff',
-    fontFamily: 'ArialUnicodeMS-Regular',
+    fontFamily: 'ArialUnicodeMS',
     textAlign: 'center',
     fontSize: SCREEN_HEIGHT * 0.022,
     width: SCREEN_WIDTH * 0.79,
