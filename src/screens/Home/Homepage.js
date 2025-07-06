@@ -1,22 +1,30 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { fetchGithubAIResponse } from '../../services/openai.js';
+import { fetchGithubAIResponse, getMoodeeMessage } from '../../services/openai.js';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Animated } from 'react-native';
+import { useRoute } from '@react-navigation/native';
+import dayjs from 'dayjs';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const STAMP_COUNT = 15;
-const STAMP_GAP = 60 / SCREEN_HEIGHT; // 60pt 自適應
-const stamps = Array.from({ length: STAMP_COUNT }, (_, i) => ({
-  date: `7/${21 + i}`,
-  completed: i < 2, // 前兩個打勾
-}));
+// 產生今天起連續15天的日期
+function generateStamps() {
+  const today = dayjs();
+  return Array.from({ length: 20 }, (_, i) => ({
+    date: `${today.month() + 1}/${today.date() + i}`,
+    completed: false,
+  }));
+}
 
 export default function HomePage({ navigation }) {
+  const route = useRoute();
   // 對話匡內容可動態變化
-  const [bubbleText, setBubbleText] = useState("Hi! Name,\nI'm moodee, your\npersonal coach.");
+  const [bubbleText, setBubbleText] = useState("Hi! Name, I'm moodee, your personal coach.");
+  const [loading, setLoading] = useState(false);
   // moodee 彈出動畫
   const moodeeAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const bubbleAnim = useRef(new Animated.Value(0)).current;
+  const [stamps, setStamps] = useState(generateStamps());
+  
   useEffect(() => {
     Animated.sequence([
       Animated.timing(moodeeAnim, {
@@ -32,33 +40,70 @@ export default function HomePage({ navigation }) {
     ]).start();
   }, []);
 
+  // 檢查是否有遊戲完成資料，如果有則生成教練建議
+  useEffect(() => {
+    const gameData = route.params?.gameCompleted;
+    if (gameData) {
+      generateCoachMessage(gameData);
+    }
+  }, [route.params]);
+
+  // 生成教練建議
+  const generateCoachMessage = async (gameData) => {
+    setLoading(true);
+    try {
+      const message = await getMoodeeMessage({
+        emotion: gameData.selectedEmotion,
+        reasons: gameData.selectedReasons,
+        gameCompleted: true,
+      });
+      setBubbleText(message);
+    } catch (error) {
+      setBubbleText("Great job completing the training! Keep up the good work!");
+    }
+    setLoading(false);
+  };
+
   const completedCount = stamps.filter(d => d.completed).length;
 
   // 計算滾動區高度：stamp數量*stamp高度+間距
-  const scrollContentHeight = SCREEN_WIDTH * 0.18 * STAMP_COUNT + SCREEN_HEIGHT * 0.071 * (STAMP_COUNT - 1) + SCREEN_HEIGHT * 0.3;
+  const scrollContentHeight = SCREEN_WIDTH * 0.18 * stamps.length + SCREEN_HEIGHT * 0.071 * (stamps.length - 1) + SCREEN_HEIGHT * 0.3;
+
+  const handleGameComplete = (date) => {
+    setStamps(prev =>
+      prev.map(stamp =>
+        stamp.date === date ? { ...stamp, completed: true } : stamp
+      )
+    );
+  };
+
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      setTimeout(() => {
+        scrollRef.current.scrollToEnd({ animated: false });
+      }, 100);
+    }
+  }, [stamps.length]);
 
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { height: scrollContentHeight }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { minHeight: SCREEN_HEIGHT } // 這行很重要
+        ]}
         showsVerticalScrollIndicator={false}
-        ref={ref => {
-          if (ref) {
-            setTimeout(() => {
-              ref.scrollToEnd({ animated: false });
-            }, 100);
-          }
-        }}
       >
-        {/* 背景圖也在 ScrollView 內，與 stamp 一起滾動 */}
         <Image
           source={require('../../../assets/images/HomePage/background.png')}
           style={[styles.background, { height: scrollContentHeight }]}
           resizeMode="cover"
         />
-        {/* 日期 stamp 節點 */}
-        {stamps.map((item, idx) => (
+        {[...stamps].reverse().map((item, idx) => (
           <TouchableOpacity
             key={item.date}
             testID={`stamp-${idx}`}
@@ -198,8 +243,8 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    marginTop: SCREEN_HEIGHT * 0.14,
-    marginBottom: SCREEN_HEIGHT * 0.12,
+    // marginTop: SCREEN_HEIGHT * 0.14,
+    // marginBottom: SCREEN_HEIGHT * 0.12,
   },
   scrollContent: {
     alignItems: 'center',
@@ -264,8 +309,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: SCREEN_WIDTH * 0.06,
     paddingVertical: SCREEN_HEIGHT * 0.02,
-    maxWidth: SCREEN_WIDTH * 0.6,
-    minWidth: SCREEN_WIDTH * 0.3,
+    width: SCREEN_WIDTH * 0.48, // 固定寬度
     minHeight: SCREEN_HEIGHT * 0.07,
     justifyContent: 'center',
   },
@@ -274,6 +318,7 @@ const styles = StyleSheet.create({
     fontSize: SCREEN_WIDTH * 0.045,
     fontWeight: '500',
     fontFamily: 'ArialUnicodeMS',
+    flexWrap: 'wrap', // 讓文字自動換行
   },
   moodee: {
     width: SCREEN_WIDTH * 0.45,

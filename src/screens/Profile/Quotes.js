@@ -9,8 +9,8 @@ const CARD_HEIGHT = SCREEN_HEIGHT * 0.5;
 const CARD_TOP = SCREEN_HEIGHT * 0.165;
 const TITLE_LEFT = SCREEN_WIDTH * 0.0769;
 const TITLE_TOP = SCREEN_HEIGHT * 0.096;
-const ARROW_SIZE = SCREEN_WIDTH * 0.10;
-const TAKE_BREATH_TOP = SCREEN_HEIGHT * 0.7;
+const ARROW_SIZE = SCREEN_WIDTH * 0.08;
+const TAKE_BREATH_TOP = SCREEN_HEIGHT * 0.71;
 
 const CARD_IMAGES = [
   require('../../../assets/images/Quotes/Card1.png'),
@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   takeBreathImg: {
-    width: SCREEN_WIDTH * 0.85,
-    height: SCREEN_HEIGHT * 0.164,
+    // width: SCREEN_WIDTH * 0.85,
+    height: SCREEN_HEIGHT * 0.18,
     borderRadius: 18,
   },
   arrowButton: {
     position: 'absolute',
-    right: SCREEN_WIDTH * 0.12,
+    right: '15%',
     bottom: SCREEN_HEIGHT * 0.003,
     width: ARROW_SIZE,
     height: ARROW_SIZE,

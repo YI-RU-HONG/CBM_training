@@ -87,7 +87,7 @@ export default function HappinessScreen() {
       <TouchableOpacity
         style={styles.arrowButton}
         onPress={() => {
-          if (selected) navigation.navigate('ReasonSelect');
+          if (selected) navigation.navigate('ReasonSelect', { selectedEmotion: selected });
         }}
         disabled={!selected}
       >
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   arrowButton: {
     position: 'absolute',
-    top: SCREEN_HEIGHT * 0.055,
+    top: SCREEN_HEIGHT * 0.05,
     right: SCREEN_WIDTH * 0.064,
     width: SCREEN_WIDTH * 0.10, // 40/390
     height: SCREEN_WIDTH * 0.10, // 40/390

@@ -14,6 +14,9 @@ import ProfileScreen from './src/screens/Profile/Profile';
 import DeepBreathScreen from './src/screens/DeepBreath/DeepBreath';
 import QuotesScreen from './src/screens/Profile/Quotes';
 import { useFonts } from 'expo-font';
+import ReasonSelect from './src/screens/Game/ReasonSelect';
+import GameScreen from './src/screens/Game/Game';
+import StatisticsScreen from './src/screens/Statistics/Statistics';
 
 
 const Stack = createStackNavigator();
@@ -57,6 +60,9 @@ export default function App() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="DeepBreath" component={DeepBreathScreen} />
         <Stack.Screen name="Quotes" component={QuotesScreen} />
+        <Stack.Screen name="ReasonSelect" component={ReasonSelect} options={{ headerShown: false }} />
+        <Stack.Screen name="Game" component={GameScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Statistics" component={StatisticsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

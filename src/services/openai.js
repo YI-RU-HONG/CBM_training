@@ -1,31 +1,43 @@
 // src/services/openai.js
 import axios from 'axios';
 
-const GITHUB_AI_API_URL = 'https://api.github.com/ai-inference/v1/completions';
-const GITHUB_TOKEN = process.env.EXPO_PUBLIC_GITHUB_TOKEN; 
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+import { EXPO_PUBLIC_OPENAI_API_KEY } from '@env';
+const OPENAI_API_KEY = EXPO_PUBLIC_OPENAI_API_KEY;
 
-/**
- * 發送 prompt 至 GitHub AI Inference API
- * @param {string} prompt - 用戶 prompt
- * @returns {Promise<string>} AI 回應
- */
-export async function fetchGithubAIResponse(prompt) {
+export async function fetchOpenAIResponse(prompt) {
   const response = await axios.post(
-    GITHUB_AI_API_URL,
+    OPENAI_API_URL,
     {
-      model: 'gpt-4', // 可根據 GitHub 支援的模型調整
-      prompt,
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: 256,
       temperature: 0.7,
     },
     {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
     }
   );
-  // 根據 GitHub API 回傳格式調整
-  return response.data.choices[0].text;
+  return response.data.choices[0].message.content;
+}
+
+export async function getMoodeeMessage(data) {
+  const { emotion, reasons, gameCompleted } = data;
+  let prompt = '';
+  if (gameCompleted) {
+    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者剛完成了一個情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），慶祝使用者完成訓練並給予正面回饋。語氣要友善、支持，避免診斷性語言。`;
+  } else {
+    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者即將開始情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），為使用者即將開始的訓練加油打氣。語氣要友善、支持，避免診斷性語言。`;
+  }
+  try {
+    // 這裡要改成 fetchOpenAIResponse
+    const response = await fetchOpenAIResponse(prompt);
+    return response;
+  } catch (error) {
+    console.error('取得 Moodee 建議失敗:', error);
+    throw error;
+  }
 } 
