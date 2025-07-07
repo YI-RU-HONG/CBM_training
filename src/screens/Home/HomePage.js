@@ -163,7 +163,7 @@ export default function HomePage({ navigation }) {
         <NavIcon
           icon={require('../../../assets/images/HomePage/Home.png')}
           active={true}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('HomePage')}
         />
         <NavIcon
           icon={require('../../../assets/images/HomePage/quote.png')}
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   starNum: {
     color: 'rgb(255,244,157)',
-    fontFamily: 'PottaOne',
+    fontFamily: 'PottaOne-Regular',
     fontSize: SCREEN_WIDTH * 0.09,
     fontWeight: 'bold',
     textAlign: 'center',
