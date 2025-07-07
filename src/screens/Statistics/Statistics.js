@@ -31,8 +31,8 @@ export default function StatisticsScreen({ navigation }) {
   const [emotionStats, setEmotionStats] = useState({});
   const [records, setRecords] = useState([]);
   const [bubbleText, setBubbleText] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(7);
-  const [selectedYear, setSelectedYear] = useState(2024);
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().month() + 1); // month() 回傳 0~11，所以要 +1
+  const [selectedYear, setSelectedYear] = useState(dayjs().year());
   // 情緒堆疊動畫
   const emotionAnims = useRef(EMOTIONS.map(() => ({
     y: new Animated.Value(-200),
@@ -295,7 +295,7 @@ export default function StatisticsScreen({ navigation }) {
           {/* 星期標題 */}
           <View style={styles.weekRow}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <Text key={d} style={styles.weekDay}>{d}</Text>
+              <Text key={d + i} style={styles.weekDay}>{d}</Text>
             ))}
           </View>
           {/* 日曆格 */}
@@ -354,9 +354,10 @@ export default function StatisticsScreen({ navigation }) {
         <NavIcon
           icon={require('../../../assets/images/HomePage/Home.png')}
           active={false}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('HomePage')}
         />
         <NavIcon
+        
           icon={require('../../../assets/images/HomePage/quote.png')}
           active={false}
           onPress={() => navigation.navigate('Quotes')}

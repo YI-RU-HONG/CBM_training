@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Dimensions, Platform, KeyboardAvoidingView, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-  import { auth } from '../../services/firebase.js';
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, Image, TextInput,
+  TouchableOpacity, Dimensions, Platform, KeyboardAvoidingView, ScrollView
+} from 'react-native';
+
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../services/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -12,78 +17,71 @@ export default function SignUpScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const isFilled = username && email && password;
 
-  // 開啟 app 時自動檢查登入狀態
-  useEffect(() => {
-    const checkLogin = async () => {
-      const loggedIn = await AsyncStorage.getItem('isLoggedIn');
-      if (loggedIn === 'true') {
-        navigation.replace('HomePage');
-      }
-    };
-    checkLogin();
-  }, []);
-
-  // 註冊並設置登入狀態
   const handleSignUp = async () => {
     if (!isFilled) return;
+
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      await AsyncStorage.setItem('isLoggedIn', 'true');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const { uid } = userCredential.user;
+
+      await setDoc(doc(db, 'users', uid), {
+        username,
+        email,
+      });
+
+      await AsyncStorage.setItem('userLoggedIn', 'true');
+      await AsyncStorage.setItem('userUID', uid);
+
+      await auth.currentUser.reload();
+      
+      console.log('✅ 註冊成功，跳轉到 HomePage');
       navigation.replace('HomePage');
     } catch (error) {
-      alert(error.message || '註冊失敗，請稍後再試');
+      console.error('❌ 註冊錯誤:', error.message);
+      alert(error.message || '註冊失敗');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* 角色圖片 */}
-      <Image
-        source={require('../../../assets/images/log in.png')}
-        style={styles.character}
-        resizeMode="stretch"
-      />
+      <Image source={require('../../../assets/images/log in.png')} style={styles.character} resizeMode="stretch" />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, width: '100%' }}
         keyboardVerticalOffset={SCREEN_HEIGHT * 0.04}
       >
-        <ScrollView
-          contentContainerStyle={styles.formContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* User name */}
+        <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.label}>User name</Text>
           <TextInput
             style={styles.input}
-            placeholder=""
-            placeholderTextColor="#BDBDBD"
             value={username}
             onChangeText={setUsername}
+            placeholder=""
+            placeholderTextColor="#BDBDBD"
           />
-          {/* Email */}
+
           <Text style={[styles.label, { marginTop: 24 }]}>Email</Text>
           <TextInput
             style={styles.input}
-            placeholder=""
-            placeholderTextColor="#BDBDBD"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            placeholder="example@email.com"
+            placeholderTextColor="#BDBDBD"
           />
-          {/* Password */}
+
           <Text style={[styles.label, { marginTop: 24 }]}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder=""
-            placeholderTextColor="#BDBDBD"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            placeholder=""
+            placeholderTextColor="#BDBDBD"
           />
-          {/* 註冊按鈕 */}
+
           <TouchableOpacity
             style={[styles.button, { backgroundColor: isFilled ? 'rgba(245,140,69,1)' : '#ccc' }]}
             onPress={handleSignUp}
@@ -101,7 +99,7 @@ export default function SignUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(255,250,237,1)', // UIColor(red: 1, green: 0.98, blue: 0.93, alpha: 1)
+    backgroundColor: 'rgba(255,250,237,1)',
     alignItems: 'center',
   },
   character: {
@@ -114,7 +112,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   formContainer: {
-    marginTop: SCREEN_HEIGHT * 0.41 + 24, // 角色下方
+    marginTop: SCREEN_HEIGHT * 0.41 + 24,
     alignItems: 'center',
     width: '100%',
     paddingBottom: 40,
@@ -136,7 +134,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     paddingHorizontal: 16,
     fontSize: SCREEN_HEIGHT * 0.021,
-    marginBottom: 0,
     alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -146,7 +143,6 @@ const styles = StyleSheet.create({
   },
   button: {
     width: SCREEN_WIDTH * 0.8,
-    backgroundColor: 'rgba(245,140,69,1)', // UIColor(red: 0.96, green: 0.55, blue: 0.27, alpha: 1)
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -164,4 +160,4 @@ const styles = StyleSheet.create({
     fontSize: SCREEN_HEIGHT * 0.021,
     textAlign: 'center',
   },
-}); 
+});
