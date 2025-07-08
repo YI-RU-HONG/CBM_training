@@ -32,16 +32,7 @@ export default {
             }
           }
         ]
-      ],
-      // Dev Build 配置
-      developmentClient: {
-        silentLaunch: true
-      },
-      extra: {
-        eas: {
-          projectId: "c3496cba-e89e-47fd-8de9-0f2e181dc6dc"
-        }
-      }
+      ]
     }
   };
   
