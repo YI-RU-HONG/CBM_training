@@ -25,13 +25,25 @@ export async function fetchOpenAIResponse(prompt) {
 }
 
 export async function getMoodeeMessage(data) {
-  const { emotion, reasons, gameCompleted } = data;
+  const { emotion, reasons, gameCompleted, username, stats } = data;
   let prompt = '';
-  if (gameCompleted) {
-    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者剛完成了一個情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），慶祝使用者完成訓練並給予正面回饋。語氣要友善、支持，避免診斷性語言。`;
+  
+  if (stats) {
+    // Statistics 頁面使用
+    const emotionCounts = Object.entries(stats)
+      .filter(([_, count]) => count > 0)
+      .map(([emotion, count]) => `${emotion}: ${count}次`)
+      .join(', ');
+    
+    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者 ${username || '朋友'} 的情緒統計如下：\n\n${emotionCounts}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），根據使用者的情緒模式給予正面回饋和建議。語氣要友善、支持，避免診斷性語言。`;
+  } else if (gameCompleted) {
+    // 遊戲完成後使用
+    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者 ${username || '朋友'} 剛完成了一個情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），慶祝使用者完成訓練並給予正面回饋。語氣要友善、支持，避免診斷性語言。`;
   } else {
-    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者即將開始情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），為使用者即將開始的訓練加油打氣。語氣要友善、支持，避免診斷性語言。`;
+    // 遊戲開始前使用
+    prompt = `你是一個名為 Moodee 的個人情緒教練。使用者 ${username || '朋友'} 即將開始情緒訓練遊戲。\n\n使用者選擇的情緒: ${emotion}\n使用者選擇的理由: ${reasons.join(', ')}\n\n請提供一個簡短、溫暖且鼓勵性的建議（最多3行），為使用者即將開始的訓練加油打氣。語氣要友善、支持，避免診斷性語言。`;
   }
+  
   try {
     // 這裡要改成 fetchOpenAIResponse
     const response = await fetchOpenAIResponse(prompt);

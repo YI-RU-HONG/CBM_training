@@ -11,7 +11,7 @@ export default function DeepBreathScreen({ navigation }) {
     ArialUnicodeMS: require('../../../assets/fonts/arial unicode ms.otf'),
     ArialUnicodeMSBold: require('../../../assets/fonts/arial unicode ms bold.otf'),
     ArialBlack: require('../../../assets/fonts/arial_black.ttf'),
-    PottaOne: require('../../../assets/fonts/PottaOne-Regular.ttf'),
+    PottaOne: require('../../../assets/fonts/PottaOne - Regular.ttf'),
   });
 
   // 動畫狀態

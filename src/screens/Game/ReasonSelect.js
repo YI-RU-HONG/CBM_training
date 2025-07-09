@@ -13,6 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { saveEmotionAndReasons } from '../../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -79,7 +80,7 @@ export default function ReasonSelect() {
   };
 
   // 跳轉到遊戲頁面
-  const handleNext = () => {
+  const handleNext = async () => {
     // 取得情緒（假設你有傳進來，或從 context 取）
     const selectedEmotion = route.params?.selectedEmotion || 'Unknown';
     // 理由
@@ -87,8 +88,14 @@ export default function ReasonSelect() {
       r === 'Something else' && customReason ? customReason : r
     );
     
+    // 新增：寫入 firebase
+    try {
+      await saveEmotionAndReasons({ emotion: selectedEmotion, reasons });
+    } catch (e) {
+      console.log('儲存情緒與理由失敗', e);
+    }
     // 直接跳轉到遊戲頁面，將情緒和理由資料傳遞過去
-    navigation.navigate('Game', { 
+    navigation.navigate('DailyGame', { 
       selectedEmotion,
       selectedReasons: reasons,
     });

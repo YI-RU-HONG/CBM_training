@@ -3,11 +3,8 @@ import {
   View, Text, StyleSheet, Image, TextInput,
   TouchableOpacity, Dimensions, Platform, KeyboardAvoidingView, ScrollView
 } from 'react-native';
-
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../services/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerUser } from '../../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -21,31 +18,28 @@ export default function SignUpScreen({ navigation }) {
     if (!isFilled) return;
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const { uid } = userCredential.user;
-
-      await setDoc(doc(db, 'users', uid), {
-        username,
-        email,
-      });
-
+      const { uid } = await registerUser({ email, password, username });
+      // Save login state
       await AsyncStorage.setItem('userLoggedIn', 'true');
       await AsyncStorage.setItem('userUID', uid);
-
-      await auth.currentUser.reload();
-      
-      console.log('✅ 註冊成功，跳轉到 HomePage');
       navigation.replace('HomePage');
     } catch (error) {
-      console.error('❌ 註冊錯誤:', error.message);
-      alert(error.message || '註冊失敗');
+      if (error.code === 'auth/email-already-in-use') {
+        alert('This email is already registered. Please log in or use another email.');
+      } else if (error.code === 'auth/invalid-email') {
+        alert('Invalid email address.');
+      } else if (error.code === 'auth/weak-password') {
+        alert('Password should be at least 6 characters.');
+      } else {
+        alert(error.message || 'Sign up failed. Please try again later.');
+      }
+      console.error('Sign up error:', error);
     }
   };
 
   return (
     <View style={styles.container}>
       <Image source={require('../../../assets/images/log in.png')} style={styles.character} resizeMode="stretch" />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, width: '100%' }}
@@ -68,7 +62,7 @@ export default function SignUpScreen({ navigation }) {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholder="example@email.com"
+            placeholder=""
             placeholderTextColor="#BDBDBD"
           />
 
@@ -143,6 +137,7 @@ const styles = StyleSheet.create({
   },
   button: {
     width: SCREEN_WIDTH * 0.8,
+    backgroundColor: 'rgba(245,140,69,1)',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',

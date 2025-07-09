@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Image, Animated, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Pressable } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import RNPickerSelect from 'react-native-picker-select';
 import dayjs from 'dayjs';
@@ -31,6 +31,7 @@ export default function StatisticsScreen({ navigation }) {
   const [emotionStats, setEmotionStats] = useState({});
   const [records, setRecords] = useState([]);
   const [bubbleText, setBubbleText] = useState('');
+  const [username, setUsername] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(dayjs().month() + 1); // month() 回傳 0~11，所以要 +1
   const [selectedYear, setSelectedYear] = useState(dayjs().year());
   // 情緒堆疊動畫
@@ -55,6 +56,35 @@ export default function StatisticsScreen({ navigation }) {
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [tempMonth, setTempMonth] = useState(selectedMonth);
   const [tempYear, setTempYear] = useState(selectedYear);
+
+  // 獲取用戶名
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const userName = userData.username || 'User';
+            setUsername(userName);
+          }
+        }
+      } catch (error) {
+        console.log('Failed to get username:', error);
+      }
+    };
+    
+    fetchUsername();
+  }, []);
+
+  // 初始化時獲取數據
+  useEffect(() => {
+    if (username) {
+      fetchData();
+    }
+  }, [username]);
 
   // 監聽 scroll 事件
   const handleScroll = (e) => {
@@ -111,11 +141,19 @@ export default function StatisticsScreen({ navigation }) {
       const auth = getAuth();
       const user = auth.currentUser;
       if (!user) {
+        console.log('No logged in user');
         setLoading(false);
         return;
       }
+      
+      console.log('🔍 fetchData - Current user UID:', user.uid);
+      console.log('🔍 fetchData - Current username state:', username);
+      
       const start = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
       const end = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-31`;
+      console.log('Query date range:', start, 'to', end);
+      console.log('Query path:', `users/${user.uid}/moodRecords`);
+      
       const q = query(
         collection(db, `users/${user.uid}/moodRecords`),
         where('date', '>=', start),
@@ -123,18 +161,26 @@ export default function StatisticsScreen({ navigation }) {
       );
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => doc.data());
+      console.log('Query results:', data);
+      console.log('🔍 fetchData - Number of documents found:', snap.docs.length);
+      
       setRecords(data);
       // 統計
       const stats = {};
       EMOTIONS.forEach(e => { stats[e.key] = 0; });
-      data.forEach(r => { if (stats[r.emotion] !== undefined) stats[r.emotion]++; });
+      data.forEach(r => { 
+        console.log('Processing record:', r.emotion, r.date, 'username:', r.username);
+        if (stats[r.emotion] !== undefined) stats[r.emotion]++; 
+      });
+      console.log('Statistics result:', stats);
       setEmotionStats(stats);
       // Moodee 語句
-      const msg = await getMoodeeMessage({ stats });
+      const msg = await getMoodeeMessage({ stats, username });
       setBubbleText(msg);
       setLoading(false);
     } catch (e) {
       console.log('Statistics error:', e);
+      console.log('Error details:', e.message);
       setLoading(false);
     }
   }
@@ -175,7 +221,24 @@ export default function StatisticsScreen({ navigation }) {
   recordsYesterday.forEach(r => { if (emotionStatsYesterday[r.emotion] !== undefined) emotionStatsYesterday[r.emotion]++; });
 
   if (loading) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F7F5EF' }}><ActivityIndicator size="large" color="#A8AFBC" /></View>;
+    return (
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: '#F7F5EF' 
+      }}>
+        <ActivityIndicator size="large" color="#A8AFBC" />
+        <Text style={{ 
+          marginTop: 16, 
+          color: '#A8AFBC', 
+          fontSize: 16,
+          fontFamily: 'ArialUnicodeMS'
+        }}>
+          Loading...
+        </Text>
+      </View>
+    );
   }
 
   // 2. 角色 scale 根據情緒比例
@@ -183,8 +246,11 @@ export default function StatisticsScreen({ navigation }) {
 
   const monthName = dayjs().month(selectedMonth - 1).format('MMMM');
 
+  // 檢查是否有數據
+  const hasData = Object.values(emotionStats).some(count => count > 0);
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFBEDE' }}>
+    <View style={{ flex: 1, backgroundColor: '#F7F5EF' }}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
@@ -197,7 +263,9 @@ export default function StatisticsScreen({ navigation }) {
           <View style={styles.emotionStack}>
             {EMOTIONS.map((e, i) => {
               const angle = emotionAngles[i] || 0;
-              const scale = e.key === 'happiness' ? 2.0 : 1.3;
+              const emotionCount = emotionStats[e.key] || 0;
+              const maxCount = Math.max(...Object.values(emotionStats), 1);
+              const scale = maxCount > 0 ? 1.3 + (emotionCount / maxCount) * 0.7 : 1.3;
               return (
                 <Animated.Image
                   key={e.key}
@@ -222,38 +290,56 @@ export default function StatisticsScreen({ navigation }) {
         </View>
         {/* 2. Your Statistics 直條圖區 */}
         <Text style={styles.statisticsTitle}>Your Statistics</Text>
-        <View style={styles.barChartWrap}>
-          {/* 左側比例文字 */}
-          <View style={styles.barChartLabelCol}>
-            {[100, 75, 50, 25, 0].map(v => (
-              <Text key={v} style={styles.barChartLabel}>{v}</Text>
-            ))}
+        {!hasData ? (
+          <View style={{ 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            paddingVertical: 40,
+            marginHorizontal: SCREEN_WIDTH * 0.05
+          }}>
+            <Text style={{ 
+              color: '#A8AFBC', 
+              fontSize: 16,
+              fontFamily: 'ArialUnicodeMS',
+              textAlign: 'center'
+            }}>
+              No statistics data yet{'\n'}Start recording your emotions!
+            </Text>
           </View>
-          {/* 直條圖 */}
-          <View style={styles.barChartRow}>
-            {EMOTIONS.map((e, i) => {
-              const value = emotionStats[e.key] || 0;
-              const barHeight = 120 * (value / max);
-              const valueYesterday = emotionStatsYesterday[e.key] || 0;
-              let trend = null;
-              if (value > valueYesterday) trend = 'up';
-              else if (value < valueYesterday) trend = 'down';
-              return (
-                <View key={e.key} style={styles.barCol}>
-                  {/* 上升/下降箭頭 */}
-                  {trend === 'up' && (
-                    <Image source={require('../../../assets/images/Statistics/increase.png')} style={{ width: 18, height: 18, marginBottom: 2 }} />
-                  )}
-                  {trend === 'down' && (
-                    <Image source={require('../../../assets/images/Statistics/down.png')} style={{ width: 18, height: 18, marginBottom: 2 }} />
-                  )}
-                  <Image source={e.icon} style={styles.barIcon} />
-                  <View style={[styles.bar, { backgroundColor: e.bar + '80', height: barHeight }]} />
-                </View>
-              );
-            })}
+        ) : (
+          <View style={styles.barChartWrap}>
+            {/* 左側比例文字 */}
+            <View style={styles.barChartLabelCol}>
+              {[100, 75, 50, 25, 0].map(v => (
+                <Text key={v} style={styles.barChartLabel}>{v}</Text>
+              ))}
+            </View>
+            {/* 直條圖 */}
+            <View style={styles.barChartRow}>
+              {EMOTIONS.map((e, i) => {
+                const value = emotionStats[e.key] || 0;
+                const barHeight = 120 * (value / max);
+                const valueYesterday = emotionStatsYesterday[e.key] || 0;
+                let trend = null;
+                if (value > valueYesterday) trend = 'up';
+                else if (value < valueYesterday) trend = 'down';
+                return (
+                  <View key={e.key} style={styles.barCol}>
+                    {/* 上升/下降箭頭 */}
+                    {trend === 'up' && (
+                      <Image source={require('../../../assets/images/Statistics/increase.png')} style={{ width: 18, height: 18, marginBottom: 2 }} />
+                    )}
+                    {trend === 'down' && (
+                      <Image source={require('../../../assets/images/Statistics/down.png')} style={{ width: 18, height: 18, marginBottom: 2 }} />
+                    )}
+                    <Image source={e.icon} style={styles.barIcon} />
+                    <View style={[styles.bar, { backgroundColor: e.bar + '80', height: barHeight }]} />
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        )}
         {/* 4. Mood Diary 區 */}
         <View style={styles.diaryWrap}>
           {/* moodee 圖片動畫滑入 */}
@@ -268,7 +354,7 @@ export default function StatisticsScreen({ navigation }) {
               <View style={styles.bubbleShadowWrap}>
                 <View style={styles.bubble}>
                   <Text style={styles.bubbleText}>
-                    {bubbleText || 'Keep going! Every day is a new start.'}
+                    {hasData ? (bubbleText || 'Keep going! Every day is a new start.') : 'Start recording your emotions and let\'s grow together!'}
                   </Text>
                 </View>
               </View>
@@ -298,14 +384,14 @@ export default function StatisticsScreen({ navigation }) {
               <Text key={d + i} style={styles.weekDay}>{d}</Text>
             ))}
           </View>
-          {/* 日曆格 */}
+                    {/* 日曆格 */}
           <View style={styles.calendarGrid}>
             {calendar.map((week, wi) => (
               <View key={wi} style={styles.calendarRow}>
                 {week.map((d, di) => {
                   if (!d) return <View key={di} style={styles.calendarCell} />;
-                  const dateStr = dayjs(`${selectedYear}-${selectedMonth}-${d}`).format('YYYY-MM-DD');
-                  const rec = records.find(r => dayjs(r.date).format('YYYY-MM-DD') === dateStr);
+                  const dateStr = dayjs(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`).format('YYYY-MM-DD');
+                  const rec = records.find(r => r.date === dateStr);
                   if (rec && EMOTIONS.find(e => e.key === rec.emotion)) {
                     const e = EMOTIONS.find(e => e.key === rec.emotion);
                     return <View key={di} style={styles.calendarCell}><Image source={e.icon} style={styles.calendarIcon} /></View>;
@@ -357,7 +443,6 @@ export default function StatisticsScreen({ navigation }) {
           onPress={() => navigation.navigate('HomePage')}
         />
         <NavIcon
-        
           icon={require('../../../assets/images/HomePage/quote.png')}
           active={false}
           onPress={() => navigation.navigate('Quotes')}
@@ -410,6 +495,10 @@ const styles = StyleSheet.create({
     lineHeight: SCREEN_WIDTH * 0.093,
     width: SCREEN_WIDTH * 0.39,
     marginTop: SCREEN_HEIGHT * 0.07,
+  },
+  emotionStack: {
+    flex: 1,
+    position: 'relative',
   },
   emotionImg: {
     position: 'absolute',
@@ -467,7 +556,7 @@ const styles = StyleSheet.create({
   bubbleContainer: {
     position: 'absolute',
     left: -SCREEN_WIDTH * 0.4,
-    top: -SCREEN_HEIGHT * 0.038,
+    bottom: SCREEN_HEIGHT * 0.19,
     zIndex: 20,
     shadowColor: 'rgba(0,0,0,0.25)',
     shadowOpacity: 1,

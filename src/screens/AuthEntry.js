@@ -1,34 +1,34 @@
-// screens/AuthEntry.js
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../services/firebase';
 
 export default function AuthEntry({ navigation }) {
-  const [checking, setChecking] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('🧩 Firebase auth state:', user?.email || 'No user');
+    const checkLocalAuth = async () => {
+      try {
+        const loggedIn = await AsyncStorage.getItem('userLoggedIn');
+        const uid = await AsyncStorage.getItem('userUID');
+        console.log('🧩 Local login check:', loggedIn, uid);
 
-      if (user) {
-        await AsyncStorage.setItem('userLoggedIn', 'true');
-        await AsyncStorage.setItem('userUID', user.uid);
-        navigation.replace('HomePage');
-      } else {
-        await AsyncStorage.removeItem('userLoggedIn');
-        await AsyncStorage.removeItem('userUID');
+        if (loggedIn === 'true' && uid) {
+          navigation.replace('HomePage');
+        } else {
+          navigation.replace('SignUp');
+        }
+      } catch (error) {
+        console.log('⚠️ Auth check error:', error);
         navigation.replace('SignUp');
+      } finally {
+        setCheckingAuth(false);
       }
+    };
 
-      setChecking(false);
-    });
-
-    return () => unsubscribe();
+    checkLocalAuth();
   }, []);
 
-  if (checking) {
+  if (checkingAuth) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#78A784" />

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Animated, PanResponder, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useQuotes } from '../../context/QuotesContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.85;
@@ -18,18 +19,9 @@ const CARD_IMAGES = [
 ];
 const EMPTY_CARD_IMAGE = require('../../../assets/images/Quotes/Card3.png');
 
-// 預設語句，可用空陣列模擬「尚未儲存」狀態
-const DEFAULT_QUOTES = [
-  "It's okay to feel this way. You're doing your best.",
-  "You are stronger than you think."
-];
-
 export default function QuotesScreen() {
   const navigation = useNavigation();
-  // quotes 可改為 context 來源
-  const [quotes, setQuotes] = useState([]); // 預設空陣列，測試無語句狀態
-  // const [quotes, setQuotes] = useState(DEFAULT_QUOTES); // 若要測試有語句狀態
-  const [cardOrder, setCardOrder] = useState(quotes.map((_, i) => i));
+  const { quotes, deleteQuote, clearAllQuotes } = useQuotes();
   const [currentIdx, setCurrentIdx] = useState(0);
 
   // 滑動動畫
@@ -66,15 +58,96 @@ export default function QuotesScreen() {
     });
   }
 
+  // 刪除當前語句
+  const handleDeleteQuote = () => {
+    if (quotes.length === 0) return;
+    
+    Alert.alert(
+      'Delete Quote',
+      'Are you sure you want to delete this quote?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const currentQuote = quotes[currentIdx];
+            const result = await deleteQuote(currentQuote.id);
+            if (result.success) {
+              // 調整當前索引
+              if (quotes.length === 1) {
+                setCurrentIdx(0);
+              } else if (currentIdx >= quotes.length - 1) {
+                setCurrentIdx(quotes.length - 2);
+              }
+              Alert.alert('Delete Successful', result.message);
+            } else {
+              Alert.alert('Delete Failed', result.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 清空所有語句
+  const handleClearAllQuotes = () => {
+    Alert.alert(
+      'Clear All Quotes',
+      'Are you sure you want to clear all saved quotes? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await clearAllQuotes();
+            if (result.success) {
+              setCurrentIdx(0);
+              Alert.alert('Clear Successful', result.message);
+            } else {
+              Alert.alert('Clear Failed', result.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // 卡片內容
   const showEmpty = quotes.length === 0;
-  const cardText = showEmpty ? 'No quotes saved yet. Tap the heart to save your favorite Moodee quotes!' : quotes[currentIdx];
+  const cardText = showEmpty ? 'No quotes saved yet. Tap the heart to save your favorite Moodee quotes!' : quotes[currentIdx]?.text || '';
   const cardImg = showEmpty ? EMPTY_CARD_IMAGE : CARD_IMAGES[currentIdx % CARD_IMAGES.length];
 
   return (
     <View style={styles.container}>
       {/* 標題 */}
       <Text style={styles.title}>My Safe Quotes</Text>
+      
+      {/* 操作按鈕 */}
+      {!showEmpty && (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleDeleteQuote}
+          >
+            <Text style={styles.actionButtonText}>🗑️ 刪除</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleClearAllQuotes}
+          >
+            <Text style={styles.actionButtonText}>🗑️ 清空全部</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       {/* 卡片區域 */}
       <View style={styles.cardArea}>
         <Animated.View
@@ -85,6 +158,22 @@ export default function QuotesScreen() {
           <Text style={[styles.cardText, showEmpty && { opacity: 0.5 }]}>{cardText}</Text>
         </Animated.View>
       </View>
+      
+      {/* 卡片指示器 */}
+      {!showEmpty && quotes.length > 1 && (
+        <View style={styles.indicatorContainer}>
+          {quotes.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.indicator,
+                index === currentIdx && styles.activeIndicator
+              ]}
+            />
+          ))}
+        </View>
+      )}
+      
       {/* take breath with me 區塊 */}
       <View style={styles.takeBreathWrap}>
         <Image source={require('../../../assets/images/Quotes/TakeBreath.png')} style={styles.takeBreathImg} resizeMode="contain" />
@@ -152,6 +241,24 @@ const styles = StyleSheet.create({
     width: 227,
     height: 35,
   },
+  actionButtons: {
+    position: 'absolute',
+    top: TITLE_TOP + 50,
+    right: TITLE_LEFT,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    backgroundColor: 'rgba(120,167,132,0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   cardArea: {
     position: 'absolute',
     top: CARD_TOP,
@@ -182,6 +289,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 28.56,
     zIndex: 2,
+  },
+  indicatorContainer: {
+    position: 'absolute',
+    top: CARD_TOP + CARD_HEIGHT + 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(120,167,132,0.3)',
+  },
+  activeIndicator: {
+    backgroundColor: 'rgba(120,167,132,1)',
   },
   takeBreathWrap: {
     position: 'absolute',

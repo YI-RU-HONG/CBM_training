@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { saveGame2Result } from '../../services/api';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -19,6 +22,34 @@ const IMAGE_PAIRS = [
     positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy3.png'),
     negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad3.png'),
   },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy4.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad4.png'),
+  },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy5.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad5.png'),
+  },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy6.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad6.png'),
+  },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy7.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad7.png'),
+  },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy8.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad8.png'),
+  }, 
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy9.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad9.png'),
+  },
+  {
+    positive: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual happy10.png'),
+    negative: require('../../../assets/images/Game/CBM-A/visual/CBM-A visual sad10.png'),
+  },
 ];
 
 const LEVELS = [
@@ -30,18 +61,43 @@ const LEVELS = [
 export default function Game2Screen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const [level, setLevel] = useState(0); // 0:3x3, 1:4x4, 2:5x5
-  const [matrix, setMatrix] = useState([]);
-  const [startTime, setStartTime] = useState(null);
-  const [positivePos, setPositivePos] = useState({ row: 0, col: 0 });
-  const [positiveImgIdx, setPositiveImgIdx] = useState(0);
-
-  // 2. 每一關隨機選一組
-  const [pairIdx, setPairIdx] = useState(0);
-
-  // 新增：取得全局階段條資訊
+  const questionIdx = route.params?.questionIdx ?? 0;
+  const schedule = route.params?.schedule;
   const currentStep = route.params?.currentStep ?? 0;
   const totalSteps = route.params?.totalSteps ?? 6;
+
+  // 取得 userDays
+  const [userDays, setUserDays] = useState(1);
+  useEffect(() => {
+    async function fetchUserDays() {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) return;
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const createdAt = userDoc.data().createdAt;
+          if (createdAt && createdAt.toDate) {
+            const firstDate = createdAt.toDate();
+            const now = new Date();
+            const diff = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24)) + 1;
+            setUserDays(diff);
+          }
+        }
+      } catch (e) {
+        console.log('取得使用天數失敗', e);
+      }
+    }
+    fetchUserDays();
+  }, []);
+
+  // 根據 userDays 決定 level
+  let level = 0;
+  if (userDays >= 4 && userDays < 7) level = 1;
+  if (userDays >= 7) level = 2;
+
+  // 題目圖片
+  const pairIdx = questionIdx % IMAGE_PAIRS.length;
 
   // 保留情緒與理由
   const selectedEmotion = route.params?.selectedEmotion || 'Unknown';
@@ -50,12 +106,18 @@ export default function Game2Screen() {
   // // 階段條數量
   // const progressBarCount = 3;
 
+  const [matrix, setMatrix] = useState([]);
+  const [startTime, setStartTime] = useState(null);
+  const [positivePos, setPositivePos] = useState({ row: 0, col: 0 });
+  const [positiveImgIdx, setPositiveImgIdx] = useState(0);
+
+  // 只要 userDays/level/pairIdx 變動就重建 matrix
   useEffect(() => {
-    const idx = Math.floor(Math.random() * IMAGE_PAIRS.length);
-    setPairIdx(idx);
-    generateMatrix(idx);
-    setStartTime(Date.now());
-  }, [level]);
+    if (typeof level === 'number' && pairIdx >= 0) {
+      generateMatrix(pairIdx);
+      setStartTime(Date.now());
+    }
+  }, [level, pairIdx]);
 
   const generateMatrix = (idx) => {
     const size = LEVELS[level].size;
@@ -88,14 +150,14 @@ export default function Game2Screen() {
         reasons: selectedReasons,
         reactionTime,
         level,
-        positiveImgIdx,
+        positiveImgIdx: pairIdx,
         pos: positivePos,
         timestamp: Date.now(),
       });
       // 進下一遊戲（或下一關）
-      navigation.navigate('Game3', {
-        selectedEmotion,
-        selectedReasons,
+      navigation.replace('DailyGame', {
+        schedule,
+        currentStep: currentStep + 1,
       });
     }
   };
@@ -124,21 +186,25 @@ export default function Game2Screen() {
       {/* 標題 */}
       <Text style={styles.title}>Find the happy face!</Text>
       {/* 矩陣 */}
-      <View style={[styles.matrixWrap, { width: matrixWidth, height: matrixWidth }]}> 
-        {matrix.map((row, r) => (
-          <View key={r} style={styles.matrixRow}>
-            {row.map((cell, c) => (
-              <TouchableOpacity
-                key={c}
-                style={{ width: imgSize, height: imgSize, margin: 2 }}
-                onPress={() => handlePress(r, c)}
-                activeOpacity={0.7}
-              >
-                <Image source={cell.img} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
+      <View style={[styles.matrixWrap, { width: matrixWidth, height: matrixWidth }]}>
+        {Array.isArray(matrix) && matrix.length > 0 ? (
+          matrix.map((row, r) => (
+            <View key={r} style={styles.matrixRow}>
+              {row.map((cell, c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={{ width: imgSize, height: imgSize, margin: 2 }}
+                  onPress={() => handlePress(r, c)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={cell.img} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))
+        ) : (
+          <Text>Loading...</Text>
+        )}
       </View>
     </View>
   );

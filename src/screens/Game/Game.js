@@ -17,6 +17,8 @@ const IMAGE_PAIRS = [
   ['CBM-A dot thumb up.png', 'CBM-A dot thumb down.png'],
   ['CBM-A dot thumb up simple.png', 'CBM-A dot thumb down simple.png'],
   ['CBM-A dot sad simple.png', 'CBM-A dot smile simple.png'],
+  ['CBM-A dot happy simple.png', 'CBM-A dot sad simple.png'],
+  ['CBM-A dot happy simple2.png', 'CBM-A dot sad simple2.png'],
 ];
 
 const POSITIVE_IMAGES = [
@@ -30,11 +32,17 @@ const POSITIVE_IMAGES = [
   'CBM-A dot sunny.png',
   'CBM-A dot sunny simple.png',
   'CBM-A dot happy.png',
+  'CBM-A dot happy simple.png',
+  'CBM-A dot happy simple2.png',
 ];
 
 export default function Game1Screen() {
   const route = useRoute();
   const navigation = useNavigation();
+  const questionIdx = route.params?.questionIdx ?? 0;
+  const schedule = route.params?.schedule;
+  const currentStep = route.params?.currentStep ?? 0;
+  const totalSteps = route.params?.totalSteps ?? 6;
   const [step, setStep] = useState(0); // 0:十字, 1:兩圖, 2:圓點
   const [startTime, setStartTime] = useState(null);
   const [dotAppearTime, setDotAppearTime] = useState(null);
@@ -48,21 +56,17 @@ export default function Game1Screen() {
   const [leftImgLayout, setLeftImgLayout] = useState(null);
   const [rightImgLayout, setRightImgLayout] = useState(null);
   const [pairWrapY, setPairWrapY] = useState(0);
-
+  
   // 取得情緒與理由
   const selectedEmotion = route.params?.selectedEmotion || 'Unknown';
   const selectedReasons = route.params?.selectedReasons || [];
 
-  // 取得全局階段條資訊
-  const currentStep = route.params?.currentStep ?? 0;
-  const totalSteps = route.params?.totalSteps ?? 6;
-
   // 兩圖隨機左右
   const [leftImg, rightImg] = React.useMemo(() => (
-    Math.random() > 0.5
-      ? IMAGE_PAIRS[pairIdx]
-      : IMAGE_PAIRS[pairIdx].slice().reverse()
-  ), [pairIdx]);
+    questionIdx % 2 === 0
+      ? IMAGE_PAIRS[questionIdx % IMAGE_PAIRS.length]
+      : IMAGE_PAIRS[questionIdx % IMAGE_PAIRS.length].slice().reverse()
+  ), [questionIdx]);
 
   // 圖片 ref
   const leftImgRef = useRef(null);
@@ -119,18 +123,16 @@ export default function Game1Screen() {
         reasons: selectedReasons,
         reactionTime,
         dotIdx,
-        pairIdx,
+        pairIdx: questionIdx,
         timestamp: Date.now(),
       });
     } catch (e) {
       console.log('儲存失敗', e);
       // 可選擇顯示提示
     }
-    navigation.navigate('Game2', {
-      selectedEmotion,
-      selectedReasons,
+    navigation.replace('DailyGame', {
+      schedule,
       currentStep: currentStep + 1,
-      totalSteps,
     });
   };
 

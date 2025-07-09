@@ -1,5 +1,5 @@
-import { getFirestore, collection, addDoc, getDoc, doc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getFirestore, collection, addDoc, getDoc, doc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { app } from './firebase';
 
 const db = getFirestore(app);
@@ -14,13 +14,24 @@ function getDateString() {
 }
 
 async function getUsernameFromUID(uid) {
-  if (!uid) return 'anonymous';
+  if (!uid) {
+    console.log('🔍 getUsernameFromUID - No UID provided, returning anonymous');
+    return 'anonymous';
+  }
+  
+  console.log('🔍 getUsernameFromUID - Fetching user data for UID:', uid);
   const userDoc = await getDoc(doc(db, 'users', uid));
+  
   if (userDoc.exists()) {
     const data = userDoc.data();
-    return data.username || 'anonymous';
+    const username = data.username || 'anonymous';
+    console.log('🔍 getUsernameFromUID - User data found:', data);
+    console.log('🔍 getUsernameFromUID - Returning username:', username);
+    return username;
+  } else {
+    console.log('🔍 getUsernameFromUID - User document does not exist for UID:', uid);
+    return 'anonymous';
   }
-  return 'anonymous';
 }
 
 export async function saveGame1Result({ emotion, reasons, reactionTime, dotIdx, pairIdx, timestamp }) {
@@ -75,11 +86,169 @@ export async function saveGame3Result({ difficulty, word, wordImg, sentence, sen
     username,
     difficulty,
     word,
-    wordImg,
+    // wordImg,
     sentence,
-    sentenceImg,
+    // sentenceImg,
     isRelated,
     reactionTime,
     timestamp,
   });
+}
+
+// import { db } from './firebase';
+// import { collection, addDoc } from 'firebase/firestore';
+
+export async function saveGame4Result({ difficulty, question, image, answer, answerText, reactionTime, timestamp }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  const username = await getUsernameFromUID(uid);
+  const docId = `${getDateString()}_${username}`;
+
+  const resultRef = collection(db, 'game4_results', docId, 'records');
+
+  await addDoc(resultRef, {
+    username,
+    difficulty,
+    question,
+    image,
+    answer,
+    answerText,
+    reactionTime,
+    timestamp,
+  });
+}
+
+// 新增：儲存情緒與理由
+export async function saveEmotionAndReasons({ emotion, reasons }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  console.log('🔍 saveEmotionAndReasons - Current user UID:', uid);
+  
+  const username = await getUsernameFromUID(uid);
+  console.log('🔍 saveEmotionAndReasons - Retrieved username:', username);
+  
+  const dateString = getDateString(); // 取得今天的日期字串
+  console.log('🔍 saveEmotionAndReasons - Date string:', dateString);
+  
+  // 儲存到 users/{uid}/moodRecords 集合，與 Statistics 頁面查詢路徑一致
+  const resultRef = collection(db, `users/${uid}/moodRecords`);
+  console.log('🔍 saveEmotionAndReasons - Collection path:', `users/${uid}/moodRecords`);
+  
+  const result = await addDoc(resultRef, {
+    username,
+    emotion: emotion.toLowerCase(), // 統一使用小寫，與 Statistics 頁面一致
+    reasons,
+    date: dateString, // 添加日期欄位
+    timestamp: Date.now(),
+  });
+  
+  console.log('🔍 saveEmotionAndReasons - Document saved with ID:', result.id);
+}
+
+/**
+ * 註冊新用戶並寫入 Firestore
+ * 前6人分配 group A，其餘分配 group B
+ * @param {string} email
+ * @param {string} password
+ * @param {string} username
+ * @returns {Promise<{uid: string, group: string}>}
+ */
+export async function registerUser({ email, password, username }) {
+  const auth = getAuth();
+  // 建立 Auth 帳號
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  // 查詢目前 users collection 有幾人
+  const usersSnap = await getDocs(collection(db, 'users'));
+  const userCount = usersSnap.size;
+  // 前6人A，其餘B
+  const group = userCount < 6 ? 'A' : 'B';
+
+  // 寫入 Firestore
+  await setDoc(doc(db, 'users', user.uid), {
+    username,
+    email,
+    group,
+    createdAt: serverTimestamp(),
+  });
+
+  return { uid: user.uid, group };
+}
+
+// ========== B 版遊戲獨立儲存 function ==========
+function filterUndefined(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+}
+
+export async function saveGame1BResult({ emotion, reasons, reactionTime, dotIdx, pairIdx, timestamp }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  const username = await getUsernameFromUID(uid);
+  const docId = `${getDateString()}_${username}`;
+  const resultRef = collection(db, 'game1b_results', docId, 'records');
+  await addDoc(resultRef, filterUndefined({
+    username,
+    emotion,
+    reasons,
+    reactionTime,
+    dotIdx,
+    pairIdx,
+    timestamp,
+  }));
+}
+
+export async function saveGame2BResult({ emotion, reasons, reactionTime, level, positiveImgIdx, pos, timestamp }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  const username = await getUsernameFromUID(uid);
+  const docId = `${getDateString()}_${username}`;
+  const resultRef = collection(db, 'game2b_results', docId, 'records');
+  await addDoc(resultRef, filterUndefined({
+    username,
+    emotion,
+    reasons,
+    reactionTime,
+    level,
+    positiveImgIdx,
+    pos,
+    timestamp,
+  }));
+}
+
+export async function saveGame3BResult({ difficulty, word, wordImg, sentence, sentenceImg, isRelated, reactionTime, timestamp }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  const username = await getUsernameFromUID(uid);
+  const docId = `${getDateString()}_${username}`;
+  const resultRef = collection(db, 'game3b_results', docId, 'records');
+  await addDoc(resultRef, filterUndefined({
+    username,
+    difficulty,
+    word,
+    // wordImg,
+    sentence,
+    // sentenceImg,
+    isRelated,
+    reactionTime,
+    timestamp,
+  }));
+}
+
+export async function saveGame4BResult({ difficulty, question, image, answer, answerText, reactionTime, timestamp }) {
+  const user = getAuth().currentUser;
+  const uid = user?.uid;
+  const username = await getUsernameFromUID(uid);
+  const docId = `${getDateString()}_${username}`;
+  const resultRef = collection(db, 'game4b_results', docId, 'records');
+  await addDoc(resultRef, filterUndefined({
+    username,
+    difficulty,
+    question,
+    image,
+    answer,
+    answerText,
+    reactionTime,
+    timestamp,
+  }));
 }

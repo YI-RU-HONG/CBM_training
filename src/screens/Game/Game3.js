@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { saveGame3Result } from '../../services/api';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase'; 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const maxImgSize = Math.min(240, SCREEN_WIDTH * 0.8);
 
 // 題庫
 const WSAP_QUESTIONS = [
@@ -71,25 +75,58 @@ const WSAP_QUESTIONS = [
 export default function Game3Screen() {
   const route = useRoute();
   const navigation = useNavigation();
+  const questionIdx = route.params?.questionIdx ?? 0;
+  const schedule = route.params?.schedule;
   const currentStep = route.params?.currentStep ?? 0;
   const totalSteps = route.params?.totalSteps ?? 6;
+  const difficulty = route.params?.difficulty ?? (() => {
+    let d = 'easy';
+    if (userDays >= 4 && userDays < 7) d = 'medium';
+    if (userDays >= 7) d = 'hard';
+    return d;
+  })();
 
-  // 依 currentStep 決定難度
-  let difficulty = 'easy';
-  if (currentStep >= 2 && currentStep < 4) difficulty = 'medium';
-  if (currentStep >= 4) difficulty = 'hard';
+  const [userDays, setUserDays] = useState(1);
+
+  useEffect(() => {
+    async function fetchUserDays() {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) return; // 尚未登入
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const createdAt = userDoc.data().createdAt;
+          if (createdAt && createdAt.toDate) {
+            const firstDate = createdAt.toDate();
+            const now = new Date();
+            const diff = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24)) + 1;
+            setUserDays(diff);
+          }
+        }
+      } catch (e) {
+        console.log('取得使用天數失敗', e);
+      }
+    }
+    fetchUserDays();
+  }, []);
+
+  // 根據 userDays 決定難度
+  // let difficulty = 'easy';
+  // if (userDays >= 4 && userDays < 7) difficulty = 'medium';
+  // if (userDays >= 7) difficulty = 'hard';
 
   // 過濾出該難度的題目
   const filteredQuestions = WSAP_QUESTIONS.filter(q => q.difficulty === difficulty);
   // 隨機抽一題
-  const [questionIdx] = useState(Math.floor(Math.random() * filteredQuestions.length));
-  const question = filteredQuestions[questionIdx];
+  const question = filteredQuestions[questionIdx % filteredQuestions.length];
 
   // 畫面狀態：0=十字, 1=單詞, 2=情境, 3=問句
   const [screen, setScreen] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
 
   useEffect(() => {
+    console.log(currentStep, totalSteps) 
     setScreen(0);
     setStartTime(Date.now());
     // 十字 1s
@@ -114,10 +151,9 @@ export default function Game3Screen() {
       reactionTime,
       timestamp: Date.now(),
     });
-    // 跳下一個遊戲
-    navigation.navigate('Game4', {
+    navigation.replace('DailyGame', {
+      schedule,
       currentStep: currentStep + 1,
-      totalSteps,
     });
   };
 
@@ -185,6 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,250,237,1)',
     alignItems: 'center',
     justifyContent: 'flex-start',
+    paddingHorizontal: 16, // 新增
   },
   progressBarWrap: {
     flexDirection: 'row',
@@ -214,7 +251,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   crossWrap: {
-    marginTop: 100,
+    position: 'absolute',
+    top: SCREEN_HEIGHT / 2 - 19,
+    left: SCREEN_WIDTH / 2 - 19,
     width: 38,
     height: 38,
     alignItems: 'center',
@@ -249,8 +288,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   wordImg: {
-    width: 120,
-    height: 120,
+    width: maxImgSize,
+    height: maxImgSize,
     resizeMode: 'contain',
   },
   sentenceWrap: {
@@ -258,17 +297,18 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   sentence: {
-    fontSize: 26,
+    fontSize: 24,
     color: '#42485A',
-    fontFamily: 'Arial', // 修正為系統字型
+    fontFamily: 'Arial', 
     textAlign: 'center',
     width: 285,
     lineHeight: 28,
     marginBottom: 20,
   },
   sentenceImg: {
-    width: 180,
-    height: 140,
+    marginTop: 20,
+    width: maxImgSize,
+    height: maxImgSize,
     resizeMode: 'contain',
   },
   questionWrap: {
@@ -288,8 +328,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonImg: {
-    width: 110,
-    height: 110,
+    width: Math.min(110, SCREEN_WIDTH * 0.3),
+    height: Math.min(110, SCREEN_WIDTH * 0.3),
     marginHorizontal: 16,
     resizeMode: 'contain',
   },

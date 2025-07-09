@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_MARGIN_H = 30 / SCREEN_WIDTH; // 30pt 自適應
@@ -10,6 +13,31 @@ const ARROW_SIZE = SCREEN_WIDTH * 0.10;
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  const [username, setUsername] = useState('User');
+
+  // 獲取用戶名
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const userName = userData.username || 'User';
+            setUsername(userName);
+          }
+        }
+      } catch (error) {
+        console.log('獲取用戶名失敗:', error);
+        setUsername('User');
+      }
+    };
+    
+    fetchUsername();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* 頭像與名稱 */}
@@ -18,7 +46,7 @@ export default function ProfileScreen() {
           source={require('../../../assets/images/Profile/photo.png')}
           style={styles.avatar}
         />
-        <Text style={styles.name}>Name</Text>
+        <Text style={styles.name}>{username}</Text>
       </View>
       {/* 卡片區域 */}
       <View style={styles.cardsWrap}>
