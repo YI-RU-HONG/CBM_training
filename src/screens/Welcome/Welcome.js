@@ -1,30 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Animated, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const navigation = useNavigation();
-  const [checking, setChecking] = useState(true);
-// proportion of the screen height for the bouncing animation
+  // proportion of the screen height for the bouncing animation
   const topMin = SCREEN_HEIGHT * 0.296;
   const topMax = SCREEN_HEIGHT * 0.319;
   const bounceAnim = useRef(new Animated.Value(topMin)).current;
-
-  useEffect(() => {
-    const checkLocalLogin = async () => {
-      const loggedIn = await AsyncStorage.getItem('userLoggedIn');
-      console.log('userLoggedIn:', loggedIn);
-      if (loggedIn === 'true') {
-        navigation.replace('HomePage');
-      } else {
-        setChecking(false);
-      }
-    };
-    checkLocalLogin();
-  }, []);
 
   useEffect(() => {
     Animated.loop(
@@ -44,11 +29,6 @@ export default function WelcomeScreen() {
       ])
     ).start();
   }, [bounceAnim, topMin, topMax]);
-
-  if (checking) {
-    // 可顯示 loading 畫面
-    return null;
-  }
 
   return (
     <View style={styles.container}>

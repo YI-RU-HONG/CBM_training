@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerUser } from '../../services/api';
+import { getAuth } from 'firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -22,6 +23,16 @@ export default function SignUpScreen({ navigation }) {
       // Save login state
       await AsyncStorage.setItem('userLoggedIn', 'true');
       await AsyncStorage.setItem('userUID', uid);
+      
+      // 保存認證令牌以便恢復
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        await AsyncStorage.setItem('userToken', token);
+        console.log('🔐 User token saved for auth restoration');
+      }
+      
       navigation.replace('HomePage');
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {

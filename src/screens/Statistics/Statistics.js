@@ -8,8 +8,28 @@ import dayjs from 'dayjs';
 import { getMoodeeMessageGemini } from '../../services/gemini';
 import { Easing } from 'react-native';
 import { useQuotes } from '../../context/QuotesContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// 獲取當前用戶 UID 的輔助函數
+async function getCurrentUID() {
+  const auth = getAuth();
+  let user = auth.currentUser;
+  let uid = null;
+  
+  // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+  if (!user) {
+    uid = await AsyncStorage.getItem('userUID');
+    console.log('📊 getCurrentUID - Firebase user is null, using UID from AsyncStorage:', uid);
+  } else {
+    uid = user.uid;
+    console.log('📊 getCurrentUID - Using Firebase user UID:', uid);
+  }
+  
+  return uid;
+}
+
 // 1. 角色順序 anger, fear, disgust, surprise, sadness, happiness
 const EMOTIONS = [
   { key: 'anger', label: 'Anger', img: require('../../../assets/images/Statistics/anger2.png'), bar: '#E27367', icon: require('../../../assets/images/Statistics/anger1.png') },
@@ -70,10 +90,9 @@ export default function StatisticsScreen({ navigation }) {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const uid = await getCurrentUID();
+        if (uid) {
+          const userDoc = await getDoc(doc(db, 'users', uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userName = userData.username || 'User';
@@ -147,24 +166,23 @@ export default function StatisticsScreen({ navigation }) {
   async function fetchData() {
     setLoading(true);
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (!user) {
+      const uid = await getCurrentUID();
+      if (!uid) {
         console.log('No logged in user');
         setLoading(false);
         return;
       }
       
-      console.log('🔍 fetchData - Current user UID:', user.uid);
+      console.log('🔍 fetchData - Current user UID:', uid);
       console.log('🔍 fetchData - Current username state:', username);
       
       const start = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
       const end = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-31`;
       console.log('Query date range:', start, 'to', end);
-      console.log('Query path:', `users/${user.uid}/moodRecords`);
+      console.log('Query path:', `users/${uid}/moodRecords`);
       
       const q = query(
-        collection(db, `users/${user.uid}/moodRecords`),
+        collection(db, `users/${uid}/moodRecords`),
         where('date', '>=', start),
         where('date', '<=', end)
       );

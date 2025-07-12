@@ -1,6 +1,7 @@
 import { getFirestore, collection, addDoc, getDoc, doc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { app } from './firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const db = getFirestore(app);
 
@@ -11,6 +12,24 @@ function getDateString() {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// 獲取當前用戶 UID 的輔助函數
+async function getCurrentUID() {
+  const auth = getAuth();
+  let user = auth.currentUser;
+  let uid = null;
+  
+  // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+  if (!user) {
+    uid = await AsyncStorage.getItem('userUID');
+    console.log('🔍 getCurrentUID - Firebase user is null, using UID from AsyncStorage:', uid);
+  } else {
+    uid = user.uid;
+    console.log('🔍 getCurrentUID - Using Firebase user UID:', uid);
+  }
+  
+  return uid;
 }
 
 async function getUsernameFromUID(uid) {
@@ -35,8 +54,7 @@ async function getUsernameFromUID(uid) {
 }
 
 export async function saveGame1Result({ emotion, reasons, reactionTime, dotIdx, pairIdx, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
 
@@ -55,8 +73,7 @@ export async function saveGame1Result({ emotion, reasons, reactionTime, dotIdx, 
 }
 
 export async function saveGame2Result({ emotion, reasons, reactionTime, level, positiveImgIdx, pos, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
 
@@ -75,8 +92,7 @@ export async function saveGame2Result({ emotion, reasons, reactionTime, level, p
 }
 
 export async function saveGame3Result({ difficulty, word, wordImg, sentence, sentenceImg, isRelated, reactionTime, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
 
@@ -99,8 +115,7 @@ export async function saveGame3Result({ difficulty, word, wordImg, sentence, sen
 // import { collection, addDoc } from 'firebase/firestore';
 
 export async function saveGame4Result({ difficulty, question, image, answer, answerText, reactionTime, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
 
@@ -120,8 +135,7 @@ export async function saveGame4Result({ difficulty, question, image, answer, ans
 
 // 新增：儲存情緒與理由
 export async function saveEmotionAndReasons({ emotion, reasons }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   console.log('🔍 saveEmotionAndReasons - Current user UID:', uid);
   
   const username = await getUsernameFromUID(uid);
@@ -182,8 +196,7 @@ function filterUndefined(obj) {
 }
 
 export async function saveGame1BResult({ emotion, reasons, reactionTime, dotIdx, pairIdx, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
   const resultRef = collection(db, 'game1b_results', docId, 'records');
@@ -199,8 +212,7 @@ export async function saveGame1BResult({ emotion, reasons, reactionTime, dotIdx,
 }
 
 export async function saveGame2BResult({ emotion, reasons, reactionTime, level, positiveImgIdx, pos, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
   const resultRef = collection(db, 'game2b_results', docId, 'records');
@@ -217,8 +229,7 @@ export async function saveGame2BResult({ emotion, reasons, reactionTime, level, 
 }
 
 export async function saveGame3BResult({ difficulty, word, wordImg, sentence, sentenceImg, isRelated, reactionTime, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
   const resultRef = collection(db, 'game3b_results', docId, 'records');
@@ -236,8 +247,7 @@ export async function saveGame3BResult({ difficulty, word, wordImg, sentence, se
 }
 
 export async function saveGame4BResult({ difficulty, question, image, answer, answerText, reactionTime, timestamp }) {
-  const user = getAuth().currentUser;
-  const uid = user?.uid;
+  const uid = await getCurrentUID();
   const username = await getUsernameFromUID(uid);
   const docId = `${getDateString()}_${username}`;
   const resultRef = collection(db, 'game4b_results', docId, 'records');

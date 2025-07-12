@@ -28,21 +28,10 @@ export default {
         "expo-build-properties",
         {
           ios: {
-            deploymentTarget: "13.4"
+            deploymentTarget: "15.1" // ✅ 把這行放這裡
           }
         }
       ]
-    ],
-    extra: {
-      eas: {
-        projectId: "c3496cba-e89e-47fd-8de9-0f2e181dc6dc"
-      }
-    },
-    updates: {
-      url: "https://u.expo.dev/c3496cba-e89e-47fd-8de9-0f2e181dc6dc"
-    },
-    runtimeVersion: {
-      policy: "appVersion"
-    }
+    ]
   }
 };

@@ -28,6 +28,8 @@ function generateStampsFrom(startDate) {
 }
 
 export default function HomePage({ navigation, route }) {
+  console.log('🏠 HomePage component mounted');
+  
   // 對話匡內容可動態變化
   const [bubbleText, setBubbleText] = useState("Hi! I'm moodee, your personal coach.");
   const [loading, setLoading] = useState(false);
@@ -48,9 +50,19 @@ export default function HomePage({ navigation, route }) {
     const fetchUsername = async () => {
       try {
         const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+        let user = auth.currentUser;
+        let uid = null;
+        
+        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        if (!user) {
+          uid = await AsyncStorage.getItem('userUID');
+          console.log('🏠 Firebase user is null, using UID from AsyncStorage:', uid);
+        } else {
+          uid = user.uid;
+        }
+        
+        if (uid) {
+          const userDoc = await getDoc(doc(db, 'users', uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userName = userData.username || 'User';
@@ -72,59 +84,75 @@ export default function HomePage({ navigation, route }) {
     const fetchHomeBubble = async () => {
       try {
         const auth = getAuth();
-        const user = auth.currentUser;
+        let user = auth.currentUser;
+        let uid = null;
         let userName = '';
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+        
+        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        if (!user) {
+          uid = await AsyncStorage.getItem('userUID');
+          console.log('🏠 Firebase user is null, using UID from AsyncStorage for bubble:', uid);
+        } else {
+          uid = user.uid;
+        }
+        
+        if (uid) {
+          const userDoc = await getDoc(doc(db, 'users', uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             userName = userData.username || 'User';
             setUsername(userName);
           }
-        }
-        // // 暫時關閉 Gemini 功能，使用固定訊息
-        // setBubbleText(`Hi! ${userName}, I'm moodee, your personal coach.`);
-        // setLoading(false);
-        
-        // 原本的 Gemini 功能（已註解）
-        
-        setLoading(true);
-        // 1. 先查 completions/{today}
-        const today = dayjs().format('YYYY-MM-DD');
-        const completionDoc = await getDoc(doc(db, 'users', user.uid, 'completions', today));
-        if (completionDoc.exists() && completionDoc.data().completed) {
-          // 2. 查 moodRecords 裡 date === 今天
-          const moodRecordsCol = collection(db, `users/${user.uid}/moodRecords`);
-          const snapshot = await getDocs(moodRecordsCol);
-          let todayRecord = null;
-          snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data.date === today) {
-              todayRecord = data;
-            }
-          });
-          if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
-            // 呼叫 Gemini 產生 game/custom 語句
-            const msg = await getMoodeeMessageGemini({
-              emotion: todayRecord.emotion,
-              reasons: todayRecord.reasons,
-              gameCompleted: true,
-              username: userName,
+          
+          // // 暫時關閉 Gemini 功能，使用固定訊息
+          // setBubbleText(`Hi! ${userName}, I'm moodee, your personal coach.`);
+          // setLoading(false);
+          
+          // 原本的 Gemini 功能（已註解）
+          
+          setLoading(true);
+          // 1. 先查 completions/{today}
+          const today = dayjs().format('YYYY-MM-DD');
+          const completionDoc = await getDoc(doc(db, 'users', uid, 'completions', today));
+          if (completionDoc.exists() && completionDoc.data().completed) {
+            // 2. 查 moodRecords 裡 date === 今天
+            const moodRecordsCol = collection(db, `users/${uid}/moodRecords`);
+            const snapshot = await getDocs(moodRecordsCol);
+            let todayRecord = null;
+            snapshot.forEach(docSnap => {
+              const data = docSnap.data();
+              if (data.date === today) {
+                todayRecord = data;
+              }
             });
-            setBubbleText(limitWords(msg));
+            if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
+              // 呼叫 Gemini 產生 game/custom 語句
+              const msg = await getMoodeeMessageGemini({
+                emotion: todayRecord.emotion,
+                reasons: todayRecord.reasons,
+                gameCompleted: true,
+                username: userName,
+              });
+              setBubbleText(limitWords(msg));
+            } else {
+              // 沒有找到今天的詳細內容，fallback welcome
+              const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
+              setBubbleText(limitWords(welcomeMsg));
+            }
           } else {
-            // 沒有找到今天的詳細內容，fallback welcome
+            // 沒完成，顯示 welcome
             const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
             setBubbleText(limitWords(welcomeMsg));
           }
+          setLoading(false);
         } else {
-          // 沒完成，顯示 welcome
-          const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
-          setBubbleText(limitWords(welcomeMsg));
+          // 沒有用戶登入，使用預設訊息
+          setBubbleText("Hi! I'm moodee, your personal coach.");
+          setLoading(false);
         }
-        setLoading(false);
         
       } catch (error) {
+        console.log('獲取 HomePage 訊息失敗:', error);
         setBubbleText("Hi! I'm moodee, your personal coach.");
         setLoading(false);
       }
@@ -141,11 +169,19 @@ export default function HomePage({ navigation, route }) {
         if (!firstLogin) {
           // 取得 Firebase 用戶 createdAt
           const auth = getAuth();
-          const user = auth.currentUser;
+          let user = auth.currentUser;
           let createdAt = null;
-          if (user) {
+          
+          // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+          if (!user) {
+            uid = await AsyncStorage.getItem('userUID');
+            console.log('🏠 Firebase user is null, using UID from AsyncStorage for stamps:', uid);
+          } else {
             uid = user.uid;
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
+          }
+          
+          if (uid) {
+            const userDoc = await getDoc(doc(db, 'users', uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
               // 假設 createdAt 是 Firestore Timestamp
@@ -171,8 +207,14 @@ export default function HomePage({ navigation, route }) {
         } else {
           // 取得 uid
           const auth = getAuth();
-          const user = auth.currentUser;
-          if (user) uid = user.uid;
+          let user = auth.currentUser;
+          if (user) {
+            uid = user.uid;
+          } else {
+            // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+            uid = await AsyncStorage.getItem('userUID');
+            console.log('🏠 Firebase user is null, using UID from AsyncStorage for existing firstLogin:', uid);
+          }
         }
         setFirstLoginDate(firstLogin);
         // 產生 20 天 stamps
@@ -206,10 +248,21 @@ export default function HomePage({ navigation, route }) {
     const checkTodayCompletion = async () => {
       try {
         const auth = getAuth();
-        const user = auth.currentUser;
-        if (!user) return;
+        let user = auth.currentUser;
+        let uid = null;
+        
+        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        if (!user) {
+          uid = await AsyncStorage.getItem('userUID');
+          console.log('🏠 Firebase user is null, using UID from AsyncStorage for completion check:', uid);
+        } else {
+          uid = user.uid;
+        }
+        
+        if (!uid) return;
+        
         const today = dayjs().format('YYYY-MM-DD');
-        const completionDoc = await getDoc(doc(db, 'users', user.uid, 'completions', today));
+        const completionDoc = await getDoc(doc(db, 'users', uid, 'completions', today));
         if (completionDoc.exists() && completionDoc.data().completed) {
           setStamps(prev =>
             prev.map(stamp => {
@@ -255,9 +308,20 @@ export default function HomePage({ navigation, route }) {
   const markDayAsCompleted = async (dateKey) => {
     try {
       const auth = getAuth();
-      const user = auth.currentUser;
-      if (!user) return;
-      await setDoc(doc(db, 'users', user.uid, 'completions', dateKey), {
+      let user = auth.currentUser;
+      let uid = null;
+      
+      // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+      if (!user) {
+        uid = await AsyncStorage.getItem('userUID');
+        console.log('🏠 Firebase user is null, using UID from AsyncStorage for markDayAsCompleted:', uid);
+      } else {
+        uid = user.uid;
+      }
+      
+      if (!uid) return;
+      
+      await setDoc(doc(db, 'users', uid, 'completions', dateKey), {
         completed: true,
         timestamp: new Date(),
       });
@@ -273,9 +337,20 @@ export default function HomePage({ navigation, route }) {
   const clearDayCompletion = async (dateKey) => {
     try {
       const auth = getAuth();
-      const user = auth.currentUser;
-      if (!user) return;
-      await setDoc(doc(db, 'users', user.uid, 'completions', dateKey), {
+      let user = auth.currentUser;
+      let uid = null;
+      
+      // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+      if (!user) {
+        uid = await AsyncStorage.getItem('userUID');
+        console.log('🏠 Firebase user is null, using UID from AsyncStorage for clearDayCompletion:', uid);
+      } else {
+        uid = user.uid;
+      }
+      
+      if (!uid) return;
+      
+      await setDoc(doc(db, 'users', uid, 'completions', dateKey), {
         completed: false,
         timestamp: new Date(),
       });
@@ -365,9 +440,9 @@ export default function HomePage({ navigation, route }) {
     }
   }, [stamps.length]);
 
-      useEffect(() => {
-        AsyncStorage.clear(); // 或 removeItem
-    }, []);
+    //   useEffect(() => {
+    //     AsyncStorage.clear(); // 或 removeItem
+    // }, []);
 
   return (
     <View style={styles.container}>

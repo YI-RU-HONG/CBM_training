@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import * as Font from 'expo-font';
 import React, { useEffect, useState } from 'react';
 import { QuotesProvider } from './src/context/QuotesContext';
+import { getAuth } from 'firebase/auth';
 
 // 畫面元件
 import AuthEntry from './src/screens/AuthEntry'; 
@@ -36,22 +37,39 @@ const Stack = createStackNavigator();
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(false);
 
   useEffect(() => {
-    async function loadFonts() {
-      await Font.loadAsync({
-        'ArialHebrewScholar-Regular': require('./assets/fonts/arial-hebrew-regular.ttf'), 
-        'ArialBlack': require('./assets/fonts/arial_black.ttf'),
-        'ArialRoundedMTBold': require('./assets/fonts/arialroundedmtbold.ttf'),
-        'PottaOne-Regular': require('./assets/fonts/PottaOne - Regular.ttf'),
-        'ArialUnicodeMS': require('./assets/fonts/arial unicode ms.otf'),
-      });
-      setFontsLoaded(true);
+    async function initializeApp() {
+      try {
+        console.log('🚀 App initialization started...');
+        
+        // 確保 Firebase 初始化
+        const auth = getAuth();
+        console.log('🚀 Firebase auth initialized:', auth);
+        setFirebaseReady(true);
+        
+        // 加載字體
+        await Font.loadAsync({
+          'ArialHebrewScholar-Regular': require('./assets/fonts/arial-hebrew-regular.ttf'), 
+          'ArialBlack': require('./assets/fonts/arial_black.ttf'),
+          'ArialRoundedMTBold': require('./assets/fonts/arialroundedmtbold.ttf'),
+          'PottaOne-Regular': require('./assets/fonts/PottaOne - Regular.ttf'),
+          'ArialUnicodeMS': require('./assets/fonts/arial unicode ms.otf'),
+        });
+        console.log('🚀 Fonts loaded successfully');
+        setFontsLoaded(true);
+        
+        console.log('🚀 App initialization completed');
+      } catch (error) {
+        console.error('❌ App initialization failed:', error);
+      }
     }
-    loadFonts();
+    
+    initializeApp();
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !firebaseReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#78A784" />
@@ -62,8 +80,8 @@ export default function App() {
   return (
     <QuotesProvider>
     <NavigationContainer>
-        <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
-          {/* <Stack.Screen name="AuthEntry" component={AuthEntry} /> */}
+        <Stack.Navigator initialRouteName="AuthEntry" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="AuthEntry" component={AuthEntry} />
         <Stack.Screen name="HomePage" component={HomePage} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />

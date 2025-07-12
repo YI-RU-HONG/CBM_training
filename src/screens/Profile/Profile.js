@@ -4,12 +4,31 @@ import { useNavigation } from '@react-navigation/native';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_MARGIN_H = 30 / SCREEN_WIDTH; // 30pt 自適應
 // const CARD_WIDTH = SCREEN_WIDTH - 2 * (SCREEN_WIDTH * CARD_MARGIN_H);
 // const CARD_HEIGHT = SCREEN_HEIGHT * 0.14;
 const ARROW_SIZE = SCREEN_WIDTH * 0.10;
+
+// 獲取當前用戶 UID 的輔助函數
+async function getCurrentUID() {
+  const auth = getAuth();
+  let user = auth.currentUser;
+  let uid = null;
+  
+  // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+  if (!user) {
+    uid = await AsyncStorage.getItem('userUID');
+    console.log('👤 getCurrentUID - Firebase user is null, using UID from AsyncStorage:', uid);
+  } else {
+    uid = user.uid;
+    console.log('👤 getCurrentUID - Using Firebase user UID:', uid);
+  }
+  
+  return uid;
+}
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -19,10 +38,9 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const uid = await getCurrentUID();
+        if (uid) {
+          const userDoc = await getDoc(doc(db, 'users', uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userName = userData.username || 'User';

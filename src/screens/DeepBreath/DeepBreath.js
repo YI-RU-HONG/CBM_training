@@ -27,8 +27,10 @@ export default function DeepBreathScreen({ navigation }) {
         duration: PHASE_DURATION * 1000,
         useNativeDriver: true,
       }).start(() => {
-        setPhase(prev => (prev === 'inhale' ? 'exhale' : 'inhale'));
-        setCountdown(PHASE_DURATION);
+        setTimeout(() => {
+          setPhase(prev => (prev === 'inhale' ? 'exhale' : 'inhale'));
+          setCountdown(PHASE_DURATION);
+        }, 0);
       });
     };
     animate();

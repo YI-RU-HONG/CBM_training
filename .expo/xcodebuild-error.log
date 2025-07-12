@@ -1,10 +1,3 @@
 --- xcodebuild: WARNING: Using the first of multiple matching destinations:
 { platform:iOS Simulator, id:CC311822-2A65-419A-AE3C-C9DB3F2AD3D0, OS:18.3.1, name:iPhone 15 }
 { platform:iOS Simulator, id:CC311822-2A65-419A-AE3C-C9DB3F2AD3D0, OS:18.3.1, name:iPhone 15 }
-** BUILD FAILED **
-
-
-The following build commands failed:
-	PhaseScriptExecution [CP-User]\ Generate\ Specs /Users/hongyiru/Library/Developer/Xcode/DerivedData/CBMAPP2-evgpdpnrzhsmzdgxhwtmhzojtcfd/Build/Intermediates.noindex/Pods.build/Debug-iphonesimulator/React-rncore.build/Script-46EB2E0001B400.sh (in target 'React-rncore' from project 'Pods')
-	Building workspace CBMAPP2 with scheme CBMAPP2 and configuration Debug
-(2 failures)
