@@ -32,6 +32,31 @@ const GAME4_QUESTIONS = [
     positive: "They’re probably just busy.",
     negative: "They might be mad.",
   },
+  {
+    difficulty: 'easy',
+    question: "You waved at a friend but they didn’t wave back.",
+    positive: "They didn’t see you.",
+    negative: "They ignored you.",
+  },
+  {
+    difficulty: 'easy',
+    question: "You shared an idea in a group chat and got no reply.",
+    positive: "Everyone is just busy.",
+    negative: "They don’t care about your idea.",
+  },
+  {
+    difficulty: 'easy',
+    question: "You receive an email titled “Meeting Tomorrow”.",
+    positive: "It’s a regular update.",
+    negative: "Something went wrong.",
+  },
+  {
+    difficulty: 'easy',
+    question: "You waved at someone, but they didn’t wave back.",
+    positive: "They didn’t see you.",
+    negative: "They ignored you on purpose.",
+  },
+  
   // 中階
   {
     difficulty: 'medium',
@@ -51,6 +76,25 @@ const GAME4_QUESTIONS = [
     positive: "They just happened to finish a topic.",
     negative: "They were probably talking about me.",
   },
+  {
+    difficulty: 'medium',
+    question: "Your friend cancels your weekend plans last minute.",
+    positive: "Something urgent came up.",
+    negative: "They didn’t want to hang out.",
+  },
+  {
+    difficulty: 'medium',
+    question: "You see your coworkers whispering and glancing your way.",
+    positive: "They’re planning a surprise.",
+    negative: "They’re talking about you.",
+  },
+  {
+    difficulty: 'medium',
+    question: "You post something on social media and get few likes.",
+    positive: "Maybe the algorithm didn’t show it.",
+    negative: "People didn’t like your post.",
+  },
+  
   // 高階
   {
     difficulty: 'hard',
@@ -76,6 +120,26 @@ const GAME4_QUESTIONS = [
     positive: "It may be unintentional.",
     negative: "They excluded you.",
   },
+  {
+    difficulty: 'hard',
+    question: "Someone replies “K.” to your long message.",
+    positive: "They were just busy or short on time.",
+    negative: "They are annoyed with you.",
+  },
+  {
+    difficulty: 'hard',
+    question: "You’re not invited to a team lunch.",
+    positive: "It might have been spontaneous.",
+    negative: "You were intentionally excluded.",
+  },
+  {
+    difficulty: 'hard',
+    question: "You don’t get a response after submitting a job application.",
+    positive: "They're still reviewing applications.",
+    negative: "They already rejected you silently.",
+  },
+  
+  
 ];
 
 export default function Game4Screen() {

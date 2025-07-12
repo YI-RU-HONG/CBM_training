@@ -29,7 +29,7 @@ jest.mock('../src/services/firebase', () => ({
   db: {}
 }));
 
-jest.mock('../src/services/openai', () => ({
+jest.mock('../src/services/gemini', () => ({
   getMoodeeMessage: jest.fn(() => Promise.resolve('Test message'))
 }));
 

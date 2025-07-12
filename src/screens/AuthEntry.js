@@ -13,6 +13,8 @@ export default function AuthEntry({ navigation }) {
         console.log('🧩 Local login check:', loggedIn, uid);
 
         if (loggedIn === 'true' && uid) {
+          // 補強：每次進入時都重新寫入 userLoggedIn，避免 reload 判斷失效
+          await AsyncStorage.setItem('userLoggedIn', 'true');
           navigation.replace('HomePage');
         } else {
           navigation.replace('SignUp');

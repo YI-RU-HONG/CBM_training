@@ -1,21 +1,50 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Animated } from 'react-native';
+import { getMoodeeMessageGemini } from '../../services/gemini';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function GameDone() {
   const navigation = useNavigation();
   const route = useRoute();
-  // 這裡可根據 route.params 或 LLM 回傳語句
-  const coachText = route.params?.coachText || "Keep up the great work!";
+  // 取得遊戲結果資料
   const selectedEmotion = route.params?.selectedEmotion;
   const selectedReasons = route.params?.selectedReasons;
+  const positiveRatio = route.params?.positiveRatio;
+  const reactionTime = route.params?.reactionTime;
+  const tasks = route.params?.tasks;
+
+  // 狀態
+  const [bubbleText, setBubbleText] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // 動畫設定
   const moodeeAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const bubbleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // 取得 Gemini 語句
+    async function fetchCoachText() {
+      setLoading(true);
+      try {
+        const msg = await getMoodeeMessageGemini({
+          emotion: selectedEmotion,
+          reasons: selectedReasons,
+          positiveRatio,
+          reactionTime,
+          tasks,
+          gameCompleted: true,
+        });
+        setBubbleText(msg);
+      } catch (e) {
+        setBubbleText('Keep up the great work!');
+      }
+      setLoading(false);
+    }
+    fetchCoachText();
+  }, [selectedEmotion, selectedReasons, positiveRatio, reactionTime, tasks]);
 
   useEffect(() => {
     Animated.sequence([
@@ -32,12 +61,6 @@ export default function GameDone() {
     ]).start();
   }, []);
 
-  // 強制長字串自動斷行
-  function insertBreaks(str, maxLen = 16) {
-    // 每 maxLen 個字插入一個零寬空格
-    return str.replace(new RegExp(`(.{${maxLen}})`, 'g'), '$1\u200B');
-  }
-
   const handleContinue = () => {
     // 傳遞遊戲完成資料給 HomePage
     navigation.replace('HomePage', { 
@@ -52,15 +75,24 @@ export default function GameDone() {
   return (
     <View style={styles.container}>
       {/* 標題 */}
-      <Text style={styles.title}>You've completed{'\n'}today's training !</Text>
+      <Text style={styles.title}>{"You've completed\ntoday's training !"}</Text>
       {/* moodee 對話匡動畫 */}
-      <Animated.View style={[styles.bubbleWrap, { opacity: bubbleAnim }]}>
+      <Animated.View style={[styles.bubbleWrap, { opacity: bubbleAnim }]}> 
         <View style={styles.bubble}>
-          <Text style={styles.bubbleText}>{insertBreaks(coachText)}</Text>
+          {loading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="small" color="#A8AFBC" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.bubbleScroll} contentContainerStyle={{ flexGrow: 1 }}>
+              <Text style={styles.bubbleText}>{bubbleText}</Text>
+            </ScrollView>
+          )}
         </View>
       </Animated.View>
       {/* moodee 圖示動畫 */}
-      <Animated.View style={[styles.moodee, { transform: [{ translateX: moodeeAnim }] }]}>
+      <Animated.View style={[styles.moodee, { transform: [{ translateX: moodeeAnim }] }]}> 
         <Image
           source={require('../../../assets/images/Game/GroupEndmoodee.png')}
           style={{ width: '100%', height: '100%' }}
@@ -99,7 +131,7 @@ const styles = StyleSheet.create({
   },
   bubbleWrap: {
     position: 'absolute',
-    bottom: SCREEN_HEIGHT * 0.58,
+    bottom: SCREEN_HEIGHT * 0.53,
     left: 32,
     zIndex: 2,
     minWidth: 80,
@@ -117,6 +149,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     minWidth: 80,
     maxWidth: SCREEN_WIDTH * 0.7,
+    minHeight: SCREEN_HEIGHT * 0.09, // 固定高度
+    maxHeight: SCREEN_HEIGHT * 0.16, // 固定高度
+  },
+  bubbleScroll: {
+    maxHeight: SCREEN_HEIGHT * 0.16,
+    minHeight: SCREEN_HEIGHT * 0.09,
   },
   bubbleText: {
     color: '#41424A',
@@ -124,6 +162,18 @@ const styles = StyleSheet.create({
     fontFamily: 'ArialUnicodeMS',
     textAlign: 'left',
     flexShrink: 1,
+  },
+  loadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: SCREEN_HEIGHT * 0.09,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: '#A8AFBC',
+    fontSize: 16,
+    fontFamily: 'ArialUnicodeMS',
   },
   moodee: {
     position: 'absolute',

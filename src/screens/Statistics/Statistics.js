@@ -5,8 +5,9 @@ import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firesto
 import { db } from '../../services/firebase';
 import RNPickerSelect from 'react-native-picker-select';
 import dayjs from 'dayjs';
-import { getMoodeeMessage } from '../../services/openai';
+import { getMoodeeMessageGemini } from '../../services/gemini';
 import { Easing } from 'react-native';
+import { useQuotes } from '../../context/QuotesContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 1. 角色順序 anger, fear, disgust, surprise, sadness, happiness
@@ -56,6 +57,14 @@ export default function StatisticsScreen({ navigation }) {
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [tempMonth, setTempMonth] = useState(selectedMonth);
   const [tempYear, setTempYear] = useState(selectedYear);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const { saveQuote } = useQuotes();
+
+  const handleAddToQuotes = async () => {
+    setIsFavorite(true);
+    await saveQuote(bubbleText);
+    // 可加提示訊息
+  };
 
   // 獲取用戶名
   useEffect(() => {
@@ -175,7 +184,7 @@ export default function StatisticsScreen({ navigation }) {
       console.log('Statistics result:', stats);
       setEmotionStats(stats);
       // Moodee 語句
-      const msg = await getMoodeeMessage({ stats, username });
+      const msg = await getMoodeeMessageGemini({ stats, username });
       setBubbleText(msg);
       setLoading(false);
     } catch (e) {
@@ -353,9 +362,17 @@ export default function StatisticsScreen({ navigation }) {
             <Animated.View style={[styles.bubbleContainer, { opacity: bubbleAnim }]}> 
               <View style={styles.bubbleShadowWrap}>
                 <View style={styles.bubble}>
-                  <Text style={styles.bubbleText}>
-                    {hasData ? (bubbleText || 'Keep going! Every day is a new start.') : 'Start recording your emotions and let\'s grow together!'}
-                  </Text>
+                  <TouchableOpacity style={styles.heartBtn} onPress={handleAddToQuotes}>
+                    <Image
+                      source={isFavorite ? require('../../../assets/images/Statistics/heart after.png') : require('../../../assets/images/Statistics/heart before.png')}
+                      style={{ width: 24, height: 24 }}
+                    />
+                  </TouchableOpacity>
+                  <ScrollView>
+                    <Text style={styles.bubbleText}>
+                      {hasData ? (bubbleText || 'Keep going! Every day is a new start.') : 'Start recording your emotions and let\'s grow together!'}
+                    </Text>
+                  </ScrollView>
                 </View>
               </View>
             </Animated.View>
@@ -556,7 +573,7 @@ const styles = StyleSheet.create({
   bubbleContainer: {
     position: 'absolute',
     left: -SCREEN_WIDTH * 0.4,
-    bottom: SCREEN_HEIGHT * 0.19,
+    bottom: SCREEN_HEIGHT * 0.18,
     zIndex: 20,
     shadowColor: 'rgba(0,0,0,0.25)',
     shadowOpacity: 1,
@@ -570,13 +587,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   bubble: {
+    marginTop: SCREEN_HEIGHT * 0.01,
     backgroundColor: 'rgb(245,243,237)',
     borderRadius: 20,
     paddingHorizontal: SCREEN_WIDTH * 0.06,
     paddingVertical: SCREEN_HEIGHT * 0.02,
-    width: SCREEN_WIDTH * 0.48,
+    width: SCREEN_WIDTH * 0.49,
     minHeight: SCREEN_HEIGHT * 0.07,
     justifyContent: 'center',
+    maxHeight: SCREEN_HEIGHT * 0.18, 
   },
   bubbleText: {
     color: '#41424A',
@@ -705,6 +724,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SCREEN_HEIGHT * 0.013,
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 20,
   },
 }); 
 

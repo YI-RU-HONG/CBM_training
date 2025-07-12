@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { fetchGithubAIResponse, getMoodeeMessage } from '../../services/openai.js';
+import { fetchGeminiResponse, getMoodeeMessageGemini } from '../../services/gemini.js';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Animated, Alert } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import dayjs from 'dayjs';
@@ -9,6 +9,8 @@ import { getAuth } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useQuotes } from '../../context/QuotesContext';
+import heartAfter from '../../../assets/images/Statistics/heart after.png';
+import heartBefore from '../../../assets/images/Statistics/heart before.png';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -63,6 +65,71 @@ export default function HomePage({ navigation, route }) {
     };
     
     fetchUsername();
+  }, []);
+
+  // 取代原本的 fetchUsernameAndWelcome useEffect
+  useEffect(() => {
+    const fetchHomeBubble = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        let userName = '';
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userName = userData.username || 'User';
+            setUsername(userName);
+          }
+        }
+        // // 暫時關閉 Gemini 功能，使用固定訊息
+        // setBubbleText(`Hi! ${userName}, I'm moodee, your personal coach.`);
+        // setLoading(false);
+        
+        // 原本的 Gemini 功能（已註解）
+        
+        setLoading(true);
+        // 1. 先查 completions/{today}
+        const today = dayjs().format('YYYY-MM-DD');
+        const completionDoc = await getDoc(doc(db, 'users', user.uid, 'completions', today));
+        if (completionDoc.exists() && completionDoc.data().completed) {
+          // 2. 查 moodRecords 裡 date === 今天
+          const moodRecordsCol = collection(db, `users/${user.uid}/moodRecords`);
+          const snapshot = await getDocs(moodRecordsCol);
+          let todayRecord = null;
+          snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.date === today) {
+              todayRecord = data;
+            }
+          });
+          if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
+            // 呼叫 Gemini 產生 game/custom 語句
+            const msg = await getMoodeeMessageGemini({
+              emotion: todayRecord.emotion,
+              reasons: todayRecord.reasons,
+              gameCompleted: true,
+              username: userName,
+            });
+            setBubbleText(limitWords(msg));
+          } else {
+            // 沒有找到今天的詳細內容，fallback welcome
+            const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
+            setBubbleText(limitWords(welcomeMsg));
+          }
+        } else {
+          // 沒完成，顯示 welcome
+          const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
+          setBubbleText(limitWords(welcomeMsg));
+        }
+        setLoading(false);
+        
+      } catch (error) {
+        setBubbleText("Hi! I'm moodee, your personal coach.");
+        setLoading(false);
+      }
+    };
+    fetchHomeBubble();
   }, []);
 
   // 初始化 first_login_date 並產生 stamps
@@ -224,14 +291,21 @@ export default function HomePage({ navigation, route }) {
   const generateCoachMessage = async (gameData) => {
     setLoading(true);
     try {
-      const message = await getMoodeeMessage({
+      // // 暫時關閉 Gemini 功能，使用固定訊息
+      // setBubbleText("Great job completing the training! Keep up the good work!");
+      // setIsSaved(false); // 重置保存狀態
+      
+      // 原本的 Gemini 功能（已註解）
+      
+      const message = await getMoodeeMessageGemini({
         emotion: gameData.selectedEmotion,
         reasons: gameData.selectedReasons,
         gameCompleted: true,
         username: username,
       });
-      setBubbleText(message);
+      setBubbleText(limitWords(message));
       setIsSaved(false); // 重置保存狀態
+      
     } catch (error) {
       setBubbleText("Great job completing the training! Keep up the good work!");
       setIsSaved(false);
@@ -291,9 +365,9 @@ export default function HomePage({ navigation, route }) {
     }
   }, [stamps.length]);
 
-    //   useEffect(() => {
-    //     AsyncStorage.clear(); // 或 removeItem
-    // }, []);
+      useEffect(() => {
+        AsyncStorage.clear(); // 或 removeItem
+    }, []);
 
   return (
     <View style={styles.container}>
@@ -345,23 +419,27 @@ export default function HomePage({ navigation, route }) {
       </View>
 
       {/* 對話匡動畫分開，內容可動態變化 */}
+      {/* 1. 對話匡內容改為可滑動，並設固定高度 */}
       <Animated.View style={[
         styles.bubbleContainer,
         { opacity: bubbleAnim }
       ]}>
         <View style={styles.bubbleShadowWrap}>
           <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>{bubbleText}</Text>
-            {/* 愛心按鈕 */}
             <TouchableOpacity
               style={styles.heartButton}
               onPress={handleSaveQuote}
               disabled={loading}
             >
-              <Text style={[styles.heartIcon, isSaved && styles.heartIconSaved]}>
-                {isSaved ? '❤️' : '🤍'}
-              </Text>
+              <Image
+                source={isSaved ? heartAfter : heartBefore}
+                style={{ width: SCREEN_WIDTH * 0.07, height: SCREEN_WIDTH * 0.06 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
+            <ScrollView style={{ maxHeight: SCREEN_HEIGHT * 0.16, minHeight: SCREEN_HEIGHT * 0.02 }}>
+              <Text style={styles.bubbleText}>{bubbleText}</Text>
+            </ScrollView>
           </View>
         </View>
       </Animated.View>
@@ -427,6 +505,14 @@ export default function HomePage({ navigation, route }) {
       )}
     </View>
   );
+}
+
+// 2. setBubbleText 時自動限制20字（英文單字數）
+function limitWords(text, maxWords = 20) {
+  if (!text) return '';
+  const words = text.split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(' ') + '...';
 }
 
 // 底部導航icon元件
@@ -553,14 +639,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: SCREEN_WIDTH * 0.06,
     paddingVertical: SCREEN_HEIGHT * 0.02,
-    width: SCREEN_WIDTH * 0.48, // 固定寬度
+    width: SCREEN_WIDTH * 0.51, // 固定寬度
     minHeight: SCREEN_HEIGHT * 0.07,
     justifyContent: 'center',
     position: 'relative',
   },
   bubbleText: {
     color: '#41424A',
-    fontSize: SCREEN_WIDTH * 0.045,
+    fontSize: SCREEN_WIDTH * 0.042,
     fontWeight: '500',
     fontFamily: 'ArialUnicodeMS',
     flexWrap: 'wrap', // 讓文字自動換行

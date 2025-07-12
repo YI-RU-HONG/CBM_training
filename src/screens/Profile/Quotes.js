@@ -21,23 +21,31 @@ const EMPTY_CARD_IMAGE = require('../../../assets/images/Quotes/Card3.png');
 
 export default function QuotesScreen() {
   const navigation = useNavigation();
-  const { quotes, deleteQuote, clearAllQuotes } = useQuotes();
+  const { quotes } = useQuotes();
   const [currentIdx, setCurrentIdx] = useState(0);
+  // 監聽 quotes 變化
+  React.useEffect(() => {
+    setCurrentIdx(0);
+  }, [quotes]);
 
   // 滑動動畫
   const pan = useRef(new Animated.ValueXY()).current;
+  const [isAnimating, setIsAnimating] = useState(false);
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10,
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10 && !isAnimating,
       onPanResponderMove: Animated.event([
         null,
         { dx: pan.x }
       ], { useNativeDriver: false }),
       onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > 60) {
-          swipeCard(-1);
-        } else if (gesture.dx < -60) {
-          swipeCard(1);
+        const threshold = SCREEN_WIDTH * 0.25;
+        if (gesture.dx > threshold) {
+          // 右滑到下一張
+          swipeOut(1);
+        } else if (gesture.dx < -threshold) {
+          // 左滑到前一張
+          swipeOut(-1);
         } else {
           Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
         }
@@ -45,109 +53,33 @@ export default function QuotesScreen() {
     })
   ).current;
 
-  function swipeCard(direction) {
-    if (quotes.length === 0) return;
-    let newIdx = (currentIdx + direction + quotes.length) % quotes.length;
-    setCurrentIdx(newIdx);
+  function swipeOut(direction) {
+    if (!quotes.length) return;
+    setIsAnimating(true);
     Animated.timing(pan, {
-      toValue: { x: direction * SCREEN_WIDTH, y: 0 },
-      duration: 200,
+      toValue: { x: direction * SCREEN_WIDTH * 1.2, y: 0 },
+      duration: 220,
       useNativeDriver: false,
     }).start(() => {
-      pan.setValue({ x: 0, y: 0 });
+      let newIdx = (currentIdx + direction + quotes.length) % quotes.length;
+      setCurrentIdx(newIdx);
+      pan.setValue({ x: 0, y: 0 }); // 下一張直接出現於原位
+      setIsAnimating(false);
     });
   }
-
-  // 刪除當前語句
-  const handleDeleteQuote = () => {
-    if (quotes.length === 0) return;
-    
-    Alert.alert(
-      'Delete Quote',
-      'Are you sure you want to delete this quote?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const currentQuote = quotes[currentIdx];
-            const result = await deleteQuote(currentQuote.id);
-            if (result.success) {
-              // 調整當前索引
-              if (quotes.length === 1) {
-                setCurrentIdx(0);
-              } else if (currentIdx >= quotes.length - 1) {
-                setCurrentIdx(quotes.length - 2);
-              }
-              Alert.alert('Delete Successful', result.message);
-            } else {
-              Alert.alert('Delete Failed', result.message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // 清空所有語句
-  const handleClearAllQuotes = () => {
-    Alert.alert(
-      'Clear All Quotes',
-      'Are you sure you want to clear all saved quotes? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await clearAllQuotes();
-            if (result.success) {
-              setCurrentIdx(0);
-              Alert.alert('Clear Successful', result.message);
-            } else {
-              Alert.alert('Clear Failed', result.message);
-            }
-          },
-        },
-      ]
-    );
-  };
 
   // 卡片內容
   const showEmpty = quotes.length === 0;
   const cardText = showEmpty ? 'No quotes saved yet. Tap the heart to save your favorite Moodee quotes!' : quotes[currentIdx]?.text || '';
-  const cardImg = showEmpty ? EMPTY_CARD_IMAGE : CARD_IMAGES[currentIdx % CARD_IMAGES.length];
+  let cardImg = EMPTY_CARD_IMAGE;
+  if (!showEmpty) {
+    cardImg = CARD_IMAGES[currentIdx % CARD_IMAGES.length];
+  }
 
   return (
     <View style={styles.container}>
       {/* 標題 */}
       <Text style={styles.title}>My Safe Quotes</Text>
-      
-      {/* 操作按鈕 */}
-      {!showEmpty && (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleDeleteQuote}
-          >
-            <Text style={styles.actionButtonText}>🗑️ 刪除</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleClearAllQuotes}
-          >
-            <Text style={styles.actionButtonText}>🗑️ 清空全部</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      
       {/* 卡片區域 */}
       <View style={styles.cardArea}>
         <Animated.View
@@ -158,22 +90,6 @@ export default function QuotesScreen() {
           <Text style={[styles.cardText, showEmpty && { opacity: 0.5 }]}>{cardText}</Text>
         </Animated.View>
       </View>
-      
-      {/* 卡片指示器 */}
-      {!showEmpty && quotes.length > 1 && (
-        <View style={styles.indicatorContainer}>
-          {quotes.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.indicator,
-                index === currentIdx && styles.activeIndicator
-              ]}
-            />
-          ))}
-        </View>
-      )}
-      
       {/* take breath with me 區塊 */}
       <View style={styles.takeBreathWrap}>
         <Image source={require('../../../assets/images/Quotes/TakeBreath.png')} style={styles.takeBreathImg} resizeMode="contain" />

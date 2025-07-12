@@ -33,6 +33,29 @@ const WSAP_QUESTIONS = [
     word: 'Fired',
     wordImg: require('../../../assets/images/Game/CBM-I/WSAP/Fired 1.png'),
   },
+  {
+    difficulty: 'easy',
+    sentence: 'Your teacher calls your name in class.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/class call.png'),
+    word: 'Critical',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/critical.png'),
+  },
+  {
+    difficulty: 'easy',
+    sentence: 'A friend comments on your social media post.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/social media.png'),
+    word: 'Supportive',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/surpportive.png'),
+  },
+  {
+    difficulty: 'easy',
+    sentence: 'You hear coworkers talking after you pass.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/walk pass talk.png'),
+    word: 'Friendly',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/friendly.png'),
+  },
+  
+  
   // 中階
   {
     difficulty: 'medium',
@@ -48,6 +71,42 @@ const WSAP_QUESTIONS = [
     word: 'Promotion',
     wordImg: require('../../../assets/images/Game/CBM-I/WSAP/promotion.jpg'),
   },
+  {
+    difficulty: 'medium',
+    sentence: 'A person doesn’t hold the door for you.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/door.png'),
+    word: 'Distracted',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/Distracted.png'),
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'Someone asks how you are doing.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/ask.png'),
+    word: 'Caring',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/caring.png'),
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'You’re added to a group chat unexpectedly.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/ask.png'),
+    word: 'Included',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/included.png'),
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'You’re told “we need to talk.” ',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/ask.png'),
+    word: 'Important',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/important.png'),
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'A friend sends a short reply.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/Situation/short reply.png'),
+    word: 'Tired',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/caring.png'),
+  },
+  
   // 高階
   {
     difficulty: 'hard',
@@ -69,6 +128,34 @@ const WSAP_QUESTIONS = [
     sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/meeting.png'),
     word: 'Excluded',
     wordImg: require('../../../assets/images/Game/CBM-I/WSAP/excluded.png'),
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'Someone avoids eye contact during a talk.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/eyes contact.png'),
+    word: 'Nervous',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/nervous.png'),
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'You receive feedback on your performance.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/feedback.png'),
+    word: 'Disappointing',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/disapointing.png'),
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'You’re not invited to a gathering.',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/not in the group.png'),
+    word: 'Excluded',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/excluded.png'),
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'You’re told “we’ll let you know.”',
+    sentenceImg: require('../../../assets/images/Game/CBM-I/WSAP/let you know.png'),
+    word: 'Rejection',
+    wordImg: require('../../../assets/images/Game/CBM-I/WSAP/rejection.png'),
   },
 ];
 

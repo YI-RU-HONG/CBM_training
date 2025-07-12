@@ -20,9 +20,26 @@ export default function DailyGame() {
       if (!userDoc.exists()) return { group: 'A', days: 1 };
       const data = userDoc.data();
       const group = data.group || 'A';
-      const createdAt = data.createdAt?.toDate?.() || new Date();
+      // 修正 createdAt 解析
+      let createdAt;
+      if (data.createdAt?.toDate) {
+        createdAt = data.createdAt.toDate();
+      } else if (typeof data.createdAt === 'string') {
+        createdAt = new Date(data.createdAt);
+      } else {
+        createdAt = new Date();
+      }
       const now = new Date();
-      const days = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)) + 1;
+      // 跨日就算一天
+      const createdDate = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
+      const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const days = Math.floor((nowDate - createdDate) / (1000 * 60 * 60 * 24)) + 1;
+      // 加入 debug log
+      console.log('【DEBUG】group:', group);
+      console.log('【DEBUG】createdAt:', createdAt, 'instanceof Date:', createdAt instanceof Date);
+      console.log('【DEBUG】now:', now);
+      console.log('【DEBUG】days:', days);
+      console.log('【DEBUG】raw createdAt from Firestore:', data.createdAt);
       return { group, days };
     }
 
@@ -31,6 +48,8 @@ export default function DailyGame() {
       if (!finalSchedule) {
         const { group, days } = await getUserGroupAndDays();
         const version = getTodayVersion(group, days);
+        // 加入 debug log
+        console.log('【DEBUG】getTodayVersion:', group, days, '=>', version);
         finalSchedule = await getOrCreateTodaySchedule({ userDays: days, version });
         setSchedule(finalSchedule);
       }

@@ -35,6 +35,34 @@ const GAME4_QUESTIONS = [
     positive: "They’re probably just busy.",
     negative: "They might be mad.",
   },
+  {
+    difficulty: 'easy',
+    question: "	Your classmate walked past without saying hi.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/walk pass.png'),
+    positive: "They didn’t notice you.",
+    negative: "They are ignoring you.",
+  }, 
+  {
+    difficulty: 'easy',
+    question: "You were not tagged in a group photo.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/photo tag.png'),
+    positive: "Maybe it was unintentional.",
+    negative: "They didn’t want to include you.",
+  },
+  {
+    difficulty: 'easy',
+    question: "A coworker quickly walked away when you approached.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/walk away.png'),
+    positive: "They were in a rush.",
+    negative: "They didn’t want to talk to you.",
+  },
+  {
+    difficulty: 'easy',
+    question: "You made a joke, but no one laughed.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/joke.png'),
+    positive: "Maybe they didn’t hear it clearly.",
+    negative: "They think you’re not funny.",
+  },
   // 中階
   {
     difficulty: 'medium',
@@ -56,6 +84,27 @@ const GAME4_QUESTIONS = [
     image: require('../../../assets/images/Game/CBM-I/Situation/meeting room.png'),
     positive: "They just happened to finish a topic.",
     negative: "They were probably talking about me.",
+  },
+  {
+    difficulty: 'medium',
+    question: "Your message was seen but not replied to for hours.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/no reply.png'),
+    positive: "They might be busy.",
+    negative: "They’re ignoring you.",
+  },
+  {
+    difficulty: 'medium',
+    question: "Your friend didn’t invite you to an outing.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/friend out.png'),
+    positive: "They thought you might be unavailable.",
+    negative: "They didn’t want you there.",
+  },
+  {
+    difficulty: 'medium',
+    question: "You were interrupted during a meeting.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/interrupted.png'),
+    positive: "They were excited to share their idea.",
+    negative: "They didn’t value your opinion.",
   },
   // 高階
   {
@@ -86,6 +135,27 @@ const GAME4_QUESTIONS = [
     positive: "It may be unintentional.",
     negative: "They excluded you.",
   },
+  {
+    difficulty: 'hard',
+    question: "	You were removed from a group chat.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/moved from group.png'),
+    positive: "Maybe they started a new project group.",
+    negative: "They didn’t want you in the group.",
+  }, 
+  {
+    difficulty: 'hard',
+    question: "You received critical feedback on your presentation.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/critical feedback.png'),
+    positive: "It’s meant to help you improve.",
+    negative: "They think you’re not competent.",
+  }, 
+  {
+    difficulty: 'hard',
+    question: "Someone gave you a short response after you opened up.",
+    image: require('../../../assets/images/Game/CBM-I/Situation/short reply.png'),
+    positive: "They might not know how to respond.",
+    negative: "They don’t care about your feelings.",
+  }, 
 ];
 
 export default function Game4Screen() {

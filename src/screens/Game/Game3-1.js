@@ -27,6 +27,23 @@ const WSAP_QUESTIONS = [
     sentence: 'Your boss asked to meet you tomorrow.',
     word: 'Fired',
   },
+  {
+    difficulty: 'easy',
+    sentence: 'You see someone glance at your clothes.',
+    word: 'Curious',
+  },
+  {
+    difficulty: 'easy',
+    sentence: 'Your teacher calls your name in class.',
+    word: 'Critical',
+  },
+  {
+    difficulty: 'easy',
+    sentence: 'A friend comments on your social media post.',
+    word: 'Supportive',
+  },
+  
+  
   // 中階
   {
     difficulty: 'medium',
@@ -38,6 +55,34 @@ const WSAP_QUESTIONS = [
     sentence: 'A message popped up from your manager.',
     word: 'Promotion',
   },
+  {
+    difficulty: 'medium',
+    sentence: 'You’re added to a group chat unexpectedly.',
+    word: 'Awkward',
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'A person doesn’t hold the door for you.',
+    word: 'Rude',
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'You’re added to a group chat unexpectedly.',
+    word: 'Awkward',
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'Someone asks how you are doing.',
+    word: 'Caring',
+  },
+  {
+    difficulty: 'medium',
+    sentence: 'You’re told “we need to talk.”',
+    word: 'Trouble',
+  },
+
+  
+  
   // 高階
   {
     difficulty: 'hard',
@@ -54,6 +99,28 @@ const WSAP_QUESTIONS = [
     sentence: 'You weren’t asked to join the final meeting.',
     word: 'Excluded',
   },
+  {
+    difficulty: 'hard',
+    sentence: 'Someone avoids eye contact during a talk.',
+    word: 'Nervous',
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'You receive feedback on your performance.',
+    word: 'Disappointing',
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'A supervisor pauses after you speak.',
+    word: 'Thinking',
+  },
+  {
+    difficulty: 'hard',
+    sentence: 'You’re told “we’ll let you know.”',
+    word: 'Consideration',
+  },
+  
+  
 ];
 
 export default function Game3Screen() {

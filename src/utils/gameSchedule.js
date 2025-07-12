@@ -2,10 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GAME_TYPES = ['Game', 'Game2', 'Game3', 'Game4'];
 const GAME_QUESTION_COUNTS = {
-  Game: 10,   // 依題庫數
-  Game2: 6,   // 直接填入 Game2 題庫總數
-  Game3: { easy: 3, medium: 2, hard: 3 }, // Game3 仍需分難度
-  Game4: { easy: 3, medium: 3, hard: 4 }, // Game4 若有難度分組可保留
+  Game: 10,   
+  Game2: 10,   
+  Game3: { easy: 6, medium: 7, hard: 7 }, 
+  Game4: { easy: 7, medium: 6, hard: 7 }, 
 };
 
 function getDifficultyByDays(userDays) {
@@ -23,7 +23,7 @@ function getShuffledIndices(count) {
   return arr;
 }
 
-// 新增：A/B 版本對應
+// A/B 版本對應
 const GAME_TYPES_A = ['Game', 'Game2', 'Game3', 'Game4'];
 const GAME_TYPES_B = ['Game-1', 'Game2-1', 'Game3-1', 'Game4-1'];
 

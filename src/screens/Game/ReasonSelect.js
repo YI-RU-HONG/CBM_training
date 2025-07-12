@@ -88,7 +88,7 @@ export default function ReasonSelect() {
       r === 'Something else' && customReason ? customReason : r
     );
     
-    // 新增：寫入 firebase
+    // 寫入 firebase
     try {
       await saveEmotionAndReasons({ emotion: selectedEmotion, reasons });
     } catch (e) {

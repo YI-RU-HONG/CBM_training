@@ -61,33 +61,33 @@ export default function App() {
 
   return (
     <QuotesProvider>
-      <NavigationContainer>
+    <NavigationContainer>
         <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
           {/* <Stack.Screen name="AuthEntry" component={AuthEntry} /> */}
-          <Stack.Screen name="HomePage" component={HomePage} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="IntroSlider" component={IntroSlider} />
-          <Stack.Screen name="Privacy" component={PrivacyScreen} />
-          <Stack.Screen name="Start" component={StartScreen} />
-          <Stack.Screen name="Emotion" component={EmotionScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="DeepBreath" component={DeepBreathScreen} />
-          <Stack.Screen name="Quotes" component={QuotesScreen} />
-          <Stack.Screen name="ReasonSelect" component={ReasonSelect} />
-          <Stack.Screen name="Game" component={GameScreen} />
-          <Stack.Screen name="Game2" component={Game2Screen} />
-          <Stack.Screen name="Game3" component={Game3Screen} />
-          <Stack.Screen name="Game4" component={Game4Screen} />
+        <Stack.Screen name="HomePage" component={HomePage} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen name="IntroSlider" component={IntroSlider} />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} />
+        <Stack.Screen name="Start" component={StartScreen} />
+        <Stack.Screen name="Emotion" component={EmotionScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="DeepBreath" component={DeepBreathScreen} />
+        <Stack.Screen name="Quotes" component={QuotesScreen} />
+        <Stack.Screen name="ReasonSelect" component={ReasonSelect} />
+        <Stack.Screen name="Game" component={GameScreen} />
+        <Stack.Screen name="Game2" component={Game2Screen} />
+        <Stack.Screen name="Game3" component={Game3Screen} />
+        <Stack.Screen name="Game4" component={Game4Screen} />
           <Stack.Screen name="Game-1" component={Game1B} />
           <Stack.Screen name="Game2-1" component={Game2B} />
           <Stack.Screen name="Game3-1" component={Game3B} />
           <Stack.Screen name="Game4-1" component={Game4B} />
-          <Stack.Screen name="Statistics" component={StatisticsScreen} />
-          <Stack.Screen name="DailyGame" component={DailyGame} />
-          <Stack.Screen name="GameDone" component={GameDone} />
-        </Stack.Navigator>
-      </NavigationContainer>
+        <Stack.Screen name="Statistics" component={StatisticsScreen} />
+        <Stack.Screen name="DailyGame" component={DailyGame} />
+        <Stack.Screen name="GameDone" component={GameDone} />
+      </Stack.Navigator>
+    </NavigationContainer>
     </QuotesProvider>
   );
 }
