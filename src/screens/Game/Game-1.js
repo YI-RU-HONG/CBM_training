@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, findNodeHandle, UIManager, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, findNodeHandle, UIManager } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { saveGame1BResult } from '../../services/api'; 
+import { saveGame1BResult } from '../../services/api'; // B版遊戲儲存函數
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -116,8 +116,7 @@ export default function Game1Screen() {
 
   // 點擊圓點
   const handleDotPress = async () => {
-    Vibration.vibrate(100); // 震動 100 毫秒
-    const reactionTime = Date.now() - dotAppearTime;
+  const reactionTime = Date.now() - dotAppearTime;
     try {
       await saveGame1BResult({
         emotion: selectedEmotion,
@@ -131,9 +130,16 @@ export default function Game1Screen() {
       console.log('儲存失敗', e);
       // 可選擇顯示提示
     }
+    // 新增：將本關結果 push 到 gameResults
+    const isPositive = POSITIVE_IMAGES.includes(leftImg) || POSITIVE_IMAGES.includes(rightImg); // 只要有正向臉
+    const taskName = 'Game-1';
     navigation.replace('DailyGame', {
       schedule,
       currentStep: currentStep + 1,
+      gameResults: [
+        ...(route.params?.gameResults || []),
+        { isPositive, reactionTime, taskName }
+      ],
     });
   };
 

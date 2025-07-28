@@ -24,7 +24,7 @@ export default function SignUpScreen({ navigation }) {
       await AsyncStorage.setItem('userLoggedIn', 'true');
       await AsyncStorage.setItem('userUID', uid);
       
-      // 保存認證令牌以便恢復
+     
       const auth = getAuth();
       const user = auth.currentUser;
       if (user) {
@@ -50,13 +50,14 @@ export default function SignUpScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../../../assets/images/log in.png')} style={styles.character} resizeMode="stretch" />
+      {/* <Image source={require('../../../assets/images/log in.png')} style={styles.character} resizeMode="stretch" /> */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, width: '100%' }}
         keyboardVerticalOffset={SCREEN_HEIGHT * 0.04}
       >
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Image source={require('../../../assets/images/log in.png')} style={styles.characterScroll} resizeMode="stretch" />
           <Text style={styles.label}>User name</Text>
           <TextInput
             style={styles.input}
@@ -116,8 +117,14 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.41,
     zIndex: 1,
   },
+  characterScroll: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.41,
+    marginBottom: 24,
+    // 無 position: 'absolute'
+  },
   formContainer: {
-    marginTop: SCREEN_HEIGHT * 0.41 + 24,
+    // marginTop: SCREEN_HEIGHT * 0.41 + 24, // 註解掉
     alignItems: 'center',
     width: '100%',
     paddingBottom: 40,

@@ -51,7 +51,7 @@ export default function ReasonSelect() {
     setModalVisible(true);
   };
 
-  // 多選
+  // multi-select
   const toggleReason = (reason) => {
     if (reason === 'Something else') {
       openCustomModal();
@@ -64,12 +64,12 @@ export default function ReasonSelect() {
     );
   };
 
-  // 彈窗 Enter
+  // modal Enter
   const handleCustomReason = () => {
     setCustomReason(customReasonTemp);
     if (customReasonTemp.trim()) {
       setSelectedReasons((prev) => {
-        // 只保留一個 something else
+        // only keep one something else
         const filtered = prev.filter((r) => r !== 'Something else');
         return [...filtered, 'Something else'];
       });
@@ -79,22 +79,22 @@ export default function ReasonSelect() {
     setModalVisible(false);
   };
 
-  // 跳轉到遊戲頁面
+  // redirect to daily game page
   const handleNext = async () => {
-    // 取得情緒（假設你有傳進來，或從 context 取）
+    // get emotion (assume you pass it in or get it from context)
     const selectedEmotion = route.params?.selectedEmotion || 'Unknown';
-    // 理由
+    // reasons
     const reasons = selectedReasons.map(r =>
       r === 'Something else' && customReason ? customReason : r
     );
     
-    // 寫入 firebase
+    // save to firebase
     try {
       await saveEmotionAndReasons({ emotion: selectedEmotion, reasons });
     } catch (e) {
-      console.log('儲存情緒與理由失敗', e);
+      console.log('save emotion and reasons failed', e);
     }
-    // 直接跳轉到遊戲頁面，將情緒和理由資料傳遞過去
+    // redirect to daily game page and pass the emotion and reasons
     navigation.navigate('DailyGame', { 
       selectedEmotion,
       selectedReasons: reasons,

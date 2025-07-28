@@ -17,7 +17,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 產生連續 20 天的日期（以 first_login_date 為起點）
 function generateStampsFrom(startDate) {
   const base = dayjs(startDate);
-  return Array.from({ length: 20 }, (_, i) => {
+  return Array.from({ length: 40 }, (_, i) => {
     const dateObj = base.add(i, 'day');
     return {
       date: `${dateObj.month() + 1}/${dateObj.date()}`,
@@ -111,11 +111,11 @@ export default function HomePage({ navigation, route }) {
           // 原本的 Gemini 功能（已註解）
           
           setLoading(true);
-          // 1. 先查 completions/{today}
+          // 1. check completions/{today}
           const today = dayjs().format('YYYY-MM-DD');
           const completionDoc = await getDoc(doc(db, 'users', uid, 'completions', today));
           if (completionDoc.exists() && completionDoc.data().completed) {
-            // 2. 查 moodRecords 裡 date === 今天
+            // 2. check moodRecords where date === today
             const moodRecordsCol = collection(db, `users/${uid}/moodRecords`);
             const snapshot = await getDocs(moodRecordsCol);
             let todayRecord = null;
@@ -126,27 +126,30 @@ export default function HomePage({ navigation, route }) {
               }
             });
             if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
-              // 呼叫 Gemini 產生 game/custom 語句
+              // call Gemini to generate homepage message
               const msg = await getMoodeeMessageGemini({
                 emotion: todayRecord.emotion,
                 reasons: todayRecord.reasons,
-                gameCompleted: true,
+                positiveRatio: todayRecord.positiveRatio || '',
+                reactionTime: todayRecord.reactionTime || '',
+                tasks: todayRecord.tasks || '',
+                type: 'homepage',
                 username: userName,
               });
               setBubbleText(limitWords(msg));
             } else {
-              // 沒有找到今天的詳細內容，fallback welcome
+              // no today's detailed content, fallback welcome
               const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
               setBubbleText(limitWords(welcomeMsg));
             }
           } else {
-            // 沒完成，顯示 welcome
+            // not completed, show welcome
             const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
             setBubbleText(limitWords(welcomeMsg));
           }
           setLoading(false);
         } else {
-          // 沒有用戶登入，使用預設訊息
+          // no user login, use default message
           setBubbleText("Hi! I'm moodee, your personal coach.");
           setLoading(false);
         }
@@ -167,12 +170,12 @@ export default function HomePage({ navigation, route }) {
         let firstLogin = await AsyncStorage.getItem('first_login_date');
         let uid = null;
         if (!firstLogin) {
-          // 取得 Firebase 用戶 createdAt
+          // get Firebase user createdAt
           const auth = getAuth();
           let user = auth.currentUser;
           let createdAt = null;
           
-          // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+          // if Firebase user is null, try to get UID from AsyncStorage
           if (!user) {
             uid = await AsyncStorage.getItem('userUID');
             console.log('🏠 Firebase user is null, using UID from AsyncStorage for stamps:', uid);
@@ -184,18 +187,18 @@ export default function HomePage({ navigation, route }) {
             const userDoc = await getDoc(doc(db, 'users', uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
-              // 假設 createdAt 是 Firestore Timestamp
+              // assume createdAt is Firestore Timestamp
               if (userData.createdAt) {
                 const ts = userData.createdAt;
                 if (typeof ts === 'object' && ts.seconds) {
                   createdAt = dayjs.unix(ts.seconds).format('YYYY-MM-DD');
                 } else if (typeof ts === 'string') {
-                  // 嘗試解析 Firestore 字串格式
+                  // try to parse Firestore string format
                   const parsed = dayjs(ts, 'D MMMM YYYY [at] HH:mm:ss [UTC]Z');
                   if (parsed.isValid()) {
                     createdAt = parsed.format('YYYY-MM-DD');
                   } else {
-                    // fallback: 直接用 dayjs 解析
+                    // fallback: use dayjs to parse
                     createdAt = dayjs(ts).format('YYYY-MM-DD');
                   }
                 }
@@ -243,7 +246,7 @@ export default function HomePage({ navigation, route }) {
     initStamps();
   }, []);
 
-  // 檢查並更新 stamp 完成狀態（Firestore 版）
+  // check and update stamp completion status (Firestore version)
   useEffect(() => {
     const checkTodayCompletion = async () => {
       try {
@@ -251,7 +254,7 @@ export default function HomePage({ navigation, route }) {
         let user = auth.currentUser;
         let uid = null;
         
-        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        // if Firebase user is null, try to get UID from AsyncStorage
         if (!user) {
           uid = await AsyncStorage.getItem('userUID');
           console.log('🏠 Firebase user is null, using UID from AsyncStorage for completion check:', uid);
@@ -272,7 +275,7 @@ export default function HomePage({ navigation, route }) {
           );
         }
       } catch (error) {
-        console.log('檢查完成狀態失敗:', error);
+        console.log('check completion status failed:', error);
       }
     };
     checkTodayCompletion();

@@ -237,15 +237,23 @@ export default function StatisticsScreen({ navigation }) {
     value: dayjs().year() - 2 + i 
   }));
 
-  // 取得昨天的日期
-  const yesterday = dayjs(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`).subtract(1, 'day');
-  const yesterdayStr = yesterday.format('YYYY-MM-DD');
-  // 取得昨天的所有紀錄
-  const recordsYesterday = records.filter(r => r.date === yesterdayStr);
-  // 統計昨天的情緒
-  const emotionStatsYesterday = {};
-  EMOTIONS.forEach(e => { emotionStatsYesterday[e.key] = 0; });
-  recordsYesterday.forEach(r => { if (emotionStatsYesterday[r.emotion] !== undefined) emotionStatsYesterday[r.emotion]++; });
+  // get three days ago
+  const threeDaysAgo = dayjs().subtract(3, 'day');
+  const threeDaysAgoStr = threeDaysAgo.format('YYYY-MM-DD');
+  // get today's date
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  // get all records today and three days ago
+  const recordsToday = records.filter(r => r.date === todayStr);
+  const recordsThreeDaysAgo = records.filter(r => r.date === threeDaysAgoStr);
+  // count emotion today and three days ago
+  const emotionStatsToday = {};
+  const emotionStatsThreeDaysAgo = {};
+  EMOTIONS.forEach(e => { 
+    emotionStatsToday[e.key] = 0; 
+    emotionStatsThreeDaysAgo[e.key] = 0; 
+  });
+  recordsToday.forEach(r => { if (emotionStatsToday[r.emotion] !== undefined) emotionStatsToday[r.emotion]++; });
+  recordsThreeDaysAgo.forEach(r => { if (emotionStatsThreeDaysAgo[r.emotion] !== undefined) emotionStatsThreeDaysAgo[r.emotion]++; });
 
   if (loading) {
     return (
@@ -341,18 +349,20 @@ export default function StatisticsScreen({ navigation }) {
                 <Text key={v} style={styles.barChartLabel}>{v}</Text>
               ))}
             </View>
-            {/* 直條圖 */}
+            {/* bar chart */}
             <View style={styles.barChartRow}>
               {EMOTIONS.map((e, i) => {
                 const value = emotionStats[e.key] || 0;
                 const barHeight = 120 * (value / max);
-                const valueYesterday = emotionStatsYesterday[e.key] || 0;
+                // arrow logic changed to today vs three days ago
+                const valueToday = emotionStatsToday[e.key] || 0;
+                const valueThreeDaysAgo = emotionStatsThreeDaysAgo[e.key] || 0;
                 let trend = null;
-                if (value > valueYesterday) trend = 'up';
-                else if (value < valueYesterday) trend = 'down';
+                if (valueToday > valueThreeDaysAgo) trend = 'up';
+                else if (valueToday < valueThreeDaysAgo) trend = 'down';
                 return (
                   <View key={e.key} style={styles.barCol}>
-                    {/* 上升/下降箭頭 */}
+                    {/* up/down arrow */}
                     {trend === 'up' && (
                       <Image source={require('../../../assets/images/Statistics/increase.png')} style={{ width: 18, height: 18, marginBottom: 2 }} />
                     )}

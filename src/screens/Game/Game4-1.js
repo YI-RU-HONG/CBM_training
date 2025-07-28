@@ -210,10 +210,16 @@ export default function Game4Screen() {
       reactionTime,
       timestamp: Date.now(),
     });
-    // 跳下一步（可依需求調整）
+    // 新增：將本關結果 push 到 gameResults
+    const isPositive = answerType === 'positive';
+    const taskName = 'Game4-1';
     navigation.replace('DailyGame', {
       schedule,
       currentStep: currentStep + 1,
+      gameResults: [
+        ...(route.params?.gameResults || []),
+        { isPositive, reactionTime, taskName }
+      ],
     });
   };
 
@@ -329,5 +335,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#42485A',
     fontFamily: 'Arial',
+    textAlign: 'center',
   },
 });

@@ -60,13 +60,25 @@ export default function Game2Screen() {
         if (!user) return;
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
-          const createdAt = userDoc.data().createdAt;
-          if (createdAt && createdAt.toDate) {
-            const firstDate = createdAt.toDate();
-            const now = new Date();
-            const diff = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24)) + 1;
-            setUserDays(diff);
+          const data = userDoc.data();
+          // 修正 createdAt 解析
+          let createdAt;
+          if (data.createdAt?.toDate) {
+            createdAt = data.createdAt.toDate();
+          } else if (typeof data.createdAt === 'string') {
+            createdAt = new Date(data.createdAt);
+          } else {
+            createdAt = new Date();
           }
+          const now = new Date();
+          // 跨日就算一天
+          const createdDate = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
+          const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const diff = Math.floor((nowDate - createdDate) / (1000 * 60 * 60 * 24)) + 1;
+          console.log('【DEBUG】createdAt:', createdAt);
+          console.log('【DEBUG】now:', now);
+          console.log('【DEBUG】diff:', diff);
+          setUserDays(diff);
         }
       } catch (e) {
         console.log('取得使用天數失敗', e);
@@ -76,9 +88,12 @@ export default function Game2Screen() {
   }, []);
 
   // 根據 userDays 決定 level
-  let level = 0;
-  if (userDays >= 4 && userDays < 7) level = 1;
-  if (userDays >= 7) level = 2;
+  const level = React.useMemo(() => {
+    console.log('userDays:', userDays); // 除錯用
+    if (userDays >= 4 && userDays < 7) return 1;
+    if (userDays >= 7) return 2;
+    return 0;
+  }, [userDays]);
 
   // 題目圖片
   const pairIdx = questionIdx % IMAGE_PAIRS.length;
@@ -101,10 +116,11 @@ export default function Game2Screen() {
       generateMatrix(pairIdx);
       setStartTime(Date.now());
     }
-  }, [level, pairIdx]);
+  }, [level, pairIdx, userDays]);
 
   const generateMatrix = (idx) => {
     const size = LEVELS[level].size;
+    console.log('level:', level, 'size:', size); // 除錯用
     const posIdx = Math.floor(Math.random() * size * size);
     const posRow = Math.floor(posIdx / size);
     const posCol = posIdx % size;
@@ -138,10 +154,18 @@ export default function Game2Screen() {
         pos: positivePos,
         timestamp: Date.now(),
       });
-      // 進下一遊戲（或下一關）
+      // 新增：將本關結果 push 到 gameResults
+      const isPositive = true; // 找到正向臉
+      const taskName = 'Game2-1';
       navigation.replace('DailyGame', {
         schedule,
         currentStep: currentStep + 1,
+        selectedEmotion,
+        selectedReasons,
+        gameResults: [
+          ...(route.params?.gameResults || []),
+          { isPositive, reactionTime, taskName }
+        ]
       });
     }
   };

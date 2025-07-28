@@ -238,9 +238,16 @@ export default function Game3Screen() {
       reactionTime,
       timestamp: Date.now(),
     });
+    // 新增：將本關結果 push 到 gameResults
+    const isPositive = isRelated; // O=正向, X=負向
+    const taskName = 'Game3';
     navigation.replace('DailyGame', {
       schedule,
       currentStep: currentStep + 1,
+      gameResults: [
+        ...(route.params?.gameResults || []),
+        { isPositive, reactionTime, taskName }
+      ],
     });
   };
 

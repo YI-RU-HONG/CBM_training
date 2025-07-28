@@ -169,17 +169,17 @@ export async function saveEmotionAndReasons({ emotion, reasons }) {
  */
 export async function registerUser({ email, password, username }) {
   const auth = getAuth();
-  // 建立 Auth 帳號
+  // create Auth account
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
-  // 查詢目前 users collection 有幾人
+  // check how many users in users collection
   const usersSnap = await getDocs(collection(db, 'users'));
   const userCount = usersSnap.size;
-  // 前6人A，其餘B
+  // first 6 users are group A, the rest are group B
   const group = userCount < 6 ? 'A' : 'B';
 
-  // 寫入 Firestore
+  // save to Firestore
   await setDoc(doc(db, 'users', user.uid), {
     username,
     email,

@@ -14,16 +14,16 @@ export default function DeepBreathScreen({ navigation }) {
     PottaOne: require('../../../assets/fonts/PottaOne - Regular.ttf'),
   });
 
-  // 動畫狀態
+  // animation state
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [phase, setPhase] = useState('inhale'); // inhale or exhale
   const [countdown, setCountdown] = useState(PHASE_DURATION);
 
   useEffect(() => {
-    // 動畫循環
+    // animation loop
     const animate = () => {
       Animated.timing(scaleAnim, {
-        toValue: phase === 'inhale' ? 1.18 : 1, // 放大到 1.18，縮小回 1
+        toValue: phase === 'inhale' ? 1.18 : 1, // enlarge to 1.18, shrink to 1
         duration: PHASE_DURATION * 1000,
         useNativeDriver: true,
       }).start(() => {
@@ -37,7 +37,7 @@ export default function DeepBreathScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // 倒數計時
+  // countdown
   useEffect(() => {
     if (countdown === 0) return;
     const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
@@ -45,7 +45,7 @@ export default function DeepBreathScreen({ navigation }) {
   }, [countdown, phase]);
 
   if (!fontsLoaded) {
-    return null; // 或可顯示 loading 畫面
+    return null; // or show loading screen
   }
 
   return (

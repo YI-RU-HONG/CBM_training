@@ -4,7 +4,7 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 const GEMINI_API_KEY = EXPO_PUBLIC_GEMINI_API_KEY;
 
 export async function fetchGeminiResponse(prompt) {
-  console.log('GEMINI_API_KEY:', GEMINI_API_KEY); // 應該要印出你的金鑰（部分遮蔽即可）
+  console.log('GEMINI_API_KEY:', GEMINI_API_KEY); 
   const response = await fetch(GEMINI_API_URL, {
     method: 'POST',
     headers: {
@@ -43,17 +43,22 @@ export function getMoodeePrompt(data, type) {
             Respond like a supportive friend. Gently acknowledge their feelings, and reflect on the reason without judgment. Avoid advice. Use a warm, conversational tone. Keep the message short and emotionally validating. No emojis.
             Reply in English only. Limit your reply to 20 words or fewer.`;
     case 'game':
-      return `The user just completed today’s CBM training.
-Game summary:
+      return `The user just completed today's CBM training.
+
+Game performance summary:
 - Emotion selected: ${data.emotion}
 - Reason: ${data.reason}
+- Tasks played: ${data.tasks}
 - Positive choice ratio (out of 6): ${data.positiveRatio}
 - Average reaction time: ${data.reactionTime}ms
-- Tasks selected: ${data.tasks}
-As Moodee, provide a short, kind message based on the user’s emotional state and game performance.
-If the positive ratio is low or emotion is negative, gently encourage improvement without judgment.
-If positive ratio is high, celebrate small wins.
-Reply in English, no emojis. Limit your reply to 20 words or less.`;
+
+As Moodee, generate a short, friendly, **specific** response based on the user's training performance. Avoid general praise like "well done" or "great job." Instead, reflect directly on:
+1. The quality of their responses in the tasks (e.g., speed, positivity ratio).
+2. Suggestions for improvement if the ratio is low or the reaction time is long.
+3. Encouraging feedback on effort, if appropriate.
+
+Keep the tone emotionally supportive but **tailored and content-aware**.
+Reply in English, under 20 words. No emojis.`;
     case 'weekly':
       return `Weekly Summary:\n- Most frequent emotion: ${data.mostEmotion}\n- Common reasons: ${data.commonReasons}\n- Avg positive score across all games: ${data.positiveScore}%\n- Participation: ${data.days} days this week\nAs Moodee, reflect on the week’s emotional pattern.\nEncourage the user, recognize their efforts, and offer hope for next week.\nEnd with one small suggestion or thought.\nOutput: 2 sentences in a warm, caring tone. Always reply in English. No emojis. Limit your reply to 20 words or less.`;
     case 'custom':
@@ -64,6 +69,30 @@ Reply in English, no emojis. Limit your reply to 20 words or less.`;
 
         Now generate a short message for:
         Emotion: ${data.emotion}, Reason: ${data.reason}`;
+    case 'homepage':
+      return `You are Moodee, a warm, emotionally intelligent companion in a mental wellbeing app.
+
+The user just opened the app homepage after training. Here’s a summary of their current emotional state and latest training performance:
+
+- Emotion selected: ${data.emotion}
+- Reason: ${data.reason}
+- Last tasks played: ${data.tasks}
+- Positive choice ratio (out of 6): ${data.positiveRatio}
+- Average reaction time: ${data.reactionTime}ms
+
+Generate a short, kind, and encouraging message that:
+1. Gently reflects on the user's current emotion and reason.
+2. Affirms the effort shown in the training session.
+3. Encourages the user to continue at their own pace.
+
+Examples:
+        - Emotion: Sadness, Reason: Workload → “You’ve been juggling so much. It’s okay to feel worn out. Be kind to yourself today.”
+        - Emotion: Happiness, Reason: Self-awareness → “That spark of insight is powerful. I hope you carry it with you into the day.”
+
+
+Avoid general phrases like “Good job” or “Well done.” Keep it personalized and emotionally validating.
+
+Output only 1–2 emotionally supportive sentences. No emojis. Always reply in English. Limit your reply to 20 words or less.`;
     default:
       return 'You are Moodee, a friendly and supportive coach. Always reply in English. No emojis.';
   }
@@ -111,17 +140,18 @@ export async function getMoodeeMessageGemini(data) {
 
   try {
     const response = await fetchGeminiResponse(prompt);
-    return limitWords(response);
+    // 直接回傳 Gemini 回覆
+    return response;
   } catch (error) {
     console.error('Failed to get Moodee suggestion:', error);
     throw error;
   }
 }
 
-// 在檔案底部加上 limitWords 函式
-function limitWords(text, maxWords = 20) {
-  if (!text) return '';
-  const words = text.split(/\s+/);
-  if (words.length <= maxWords) return text;
-  return words.slice(0, maxWords).join(' ') + '...';
-} 
+// // 在檔案底部加上 limitWords 函式
+// function limitWords(text, maxWords = 25) {
+//   if (!text) return '';
+//   const words = text.split(/\s+/);
+//   if (words.length <= maxWords) return text;
+//   return words.slice(0, maxWords).join(' ') + '...';
+// } 

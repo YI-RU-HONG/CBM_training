@@ -211,7 +211,7 @@ export default function IntroSlider() {
           setCurrentIndex(index);
         }}
       />
-      {/* 點點指示器 */}
+      {/* dot indicator */}
       <View style={styles.dotsContainer}>
         {slides.map((_, i) => (
           <View

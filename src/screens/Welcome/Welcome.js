@@ -6,7 +6,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const navigation = useNavigation();
-  // proportion of the screen height for the bouncing animation
   const topMin = SCREEN_HEIGHT * 0.296;
   const topMax = SCREEN_HEIGHT * 0.319;
   const bounceAnim = useRef(new Animated.Value(topMin)).current;

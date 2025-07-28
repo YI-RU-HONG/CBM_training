@@ -23,11 +23,11 @@ function getShuffledIndices(count) {
   return arr;
 }
 
-// A/B 版本對應
+// A/B version
 const GAME_TYPES_A = ['Game', 'Game2', 'Game3', 'Game4'];
 const GAME_TYPES_B = ['Game-1', 'Game2-1', 'Game3-1', 'Game4-1'];
 
-// 根據 group/days 決定今天版本
+// determine today's version based on group/days
 export function getTodayVersion(group, days) {
   if (group === 'A') {
     return days % 2 === 1 ? 'A' : 'B';
@@ -36,7 +36,7 @@ export function getTodayVersion(group, days) {
   }
 }
 
-// 新增 version 參數
+// add version parameter
 export async function getOrCreateTodaySchedule({ userDays = 1, version = 'A' }) {
   const today = new Date().toISOString().slice(0, 10);
   const key = `game_schedule_${today}_v${version}`;
@@ -45,7 +45,7 @@ export async function getOrCreateTodaySchedule({ userDays = 1, version = 'A' }) 
 
   const difficulty = getDifficultyByDays(userDays);
   const result = [];
-  // 預先為每種遊戲洗牌
+  // shuffle each game type
   const shuffled = {
     Game: getShuffledIndices(GAME_QUESTION_COUNTS.Game),
     Game2: getShuffledIndices(GAME_QUESTION_COUNTS.Game2),
@@ -54,7 +54,7 @@ export async function getOrCreateTodaySchedule({ userDays = 1, version = 'A' }) 
   };
   const used = { Game: 0, Game2: 0, Game3: 0, Game4: 0 };
 
-  // 選擇今天的遊戲型別
+  // select today's game types
   const GAME_TYPES = version === 'A' ? GAME_TYPES_A : GAME_TYPES_B;
 
   for (let i = 0; i < 6; i++) {
