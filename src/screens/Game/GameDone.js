@@ -9,36 +9,53 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function GameDone() {
   const navigation = useNavigation();
   const route = useRoute();
-  // 取得遊戲結果資料
+  // get game result data
   const selectedEmotion = route.params?.selectedEmotion;
   const selectedReasons = route.params?.selectedReasons;
   const positiveRatio = route.params?.positiveRatio;
   const reactionTime = route.params?.reactionTime;
   const tasks = route.params?.tasks;
 
-  // 狀態
+  // status
   const [bubbleText, setBubbleText] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // 動畫設定
+  // animation settings
   const moodeeAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const bubbleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 取得 Gemini 語句
+    // get Gemini sentence
     async function fetchCoachText() {
       setLoading(true);
       try {
-        const msg = await getMoodeeMessageGemini({
+        // safe check selectedReasons
+        const safeReasons = selectedReasons && Array.isArray(selectedReasons) ? selectedReasons : [];
+        
+        console.log('🎮 GameDone: Starting Gemini request with data:', {
+          type: 'game',
           emotion: selectedEmotion,
-          reasons: selectedReasons,
+          reasons: safeReasons.join(', '),
           positiveRatio,
           reactionTime,
           tasks,
           gameCompleted: true,
         });
+        
+        const msg = await getMoodeeMessageGemini({
+          type: 'game',
+          emotion: selectedEmotion,
+          reasons: safeReasons.join(', '),
+          positiveRatio,
+          reactionTime,
+          tasks,
+          gameCompleted: true,
+        });
+        
+        console.log('🎮 GameDone: Gemini response received:', msg);
         setBubbleText(msg);
       } catch (e) {
+        console.error('🎮 GameDone: Gemini request failed:', e);
         setBubbleText('Keep up the great work!');
       }
       setLoading(false);
@@ -62,7 +79,7 @@ export default function GameDone() {
   }, []);
 
   const handleContinue = () => {
-    // 傳遞遊戲完成資料給 HomePage
+    // pass game completion data to HomePage
     navigation.replace('HomePage', { 
       showCongrats: true,
       gameCompleted: {
@@ -74,9 +91,9 @@ export default function GameDone() {
 
   return (
     <View style={styles.container}>
-      {/* 標題 */}
+      {/* title */}
       <Text style={styles.title}>{"You've completed\ntoday's training !"}</Text>
-      {/* moodee 對話匡動畫 */}
+      {/* moodee dialog animation */}
       <Animated.View style={[styles.bubbleWrap, { opacity: bubbleAnim }]}> 
         <View style={styles.bubble}>
           {loading ? (
@@ -91,7 +108,7 @@ export default function GameDone() {
           )}
         </View>
       </Animated.View>
-      {/* moodee 圖示動畫 */}
+      {/* moodee icon animation */}
       <Animated.View style={[styles.moodee, { transform: [{ translateX: moodeeAnim }] }]}> 
         <Image
           source={require('../../../assets/images/Game/GroupEndmoodee.png')}
@@ -99,7 +116,7 @@ export default function GameDone() {
           resizeMode="contain"
         />
       </Animated.View>
-      {/* 按鈕 */}
+      {/* button */}
       <TouchableOpacity
         style={styles.button}
         onPress={handleContinue}
@@ -149,8 +166,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     minWidth: 80,
     maxWidth: SCREEN_WIDTH * 0.7,
-    minHeight: SCREEN_HEIGHT * 0.09, // 固定高度
-    maxHeight: SCREEN_HEIGHT * 0.16, // 固定高度
+    minHeight: SCREEN_HEIGHT * 0.09, // fixed height
+    maxHeight: SCREEN_HEIGHT * 0.16, // fixed height
   },
   bubbleScroll: {
     maxHeight: SCREEN_HEIGHT * 0.16,
@@ -159,7 +176,7 @@ const styles = StyleSheet.create({
   bubbleText: {
     color: '#41424A',
     fontSize: 16,
-    fontFamily: 'ArialUnicodeMS',
+    fontFamily: undefined, // use system default font
     textAlign: 'left',
     flexShrink: 1,
   },

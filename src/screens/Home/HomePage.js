@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { fetchGeminiResponse, getMoodeeMessageGemini } from '../../services/gemini.js';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Animated, Alert } from 'react-native';
+import { fetchGeminiResponse, getMoodeeMessageGemini, getDefaultMessage } from '../../services/gemini.js';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Animated, Alert, ActivityIndicator } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import { getOrCreateTodaySchedule } from '../../utils/gameSchedule';
@@ -9,12 +9,12 @@ import { getAuth } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useQuotes } from '../../context/QuotesContext';
+import { updateStatisticsAfterGame, triggerStatisticsCalculation } from '../../services/api';
 import heartAfter from '../../../assets/images/Statistics/heart after.png';
 import heartBefore from '../../../assets/images/Statistics/heart before.png';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// 產生連續 20 天的日期（以 first_login_date 為起點）
 function generateStampsFrom(startDate) {
   const base = dayjs(startDate);
   return Array.from({ length: 40 }, (_, i) => {
@@ -30,11 +30,13 @@ function generateStampsFrom(startDate) {
 export default function HomePage({ navigation, route }) {
   console.log('🏠 HomePage component mounted');
   
-  // 對話匡內容可動態變化
+  // dialog content can be dynamically changed
   const [bubbleText, setBubbleText] = useState("Hi! I'm moodee, your personal coach.");
+  const [displayedText, setDisplayedText] = useState("Hi! I'm moodee, your personal coach.");
+
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
-  // moodee 彈出動畫
+  // moodee popup animation
   const moodeeAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const bubbleAnim = useRef(new Animated.Value(0)).current;
   const [stamps, setStamps] = useState([]);
@@ -42,10 +44,10 @@ export default function HomePage({ navigation, route }) {
   const [showCongrats, setShowCongrats] = useState(route.params?.showCongrats || false);
   const [isSaved, setIsSaved] = useState(false);
   
-  // 使用 Quotes Context
+  // use Quotes Context
   const { saveQuote } = useQuotes();
   
-  // 獲取用戶名
+  // get username
   useEffect(() => {
     const fetchUsername = async () => {
       try {
@@ -53,7 +55,7 @@ export default function HomePage({ navigation, route }) {
         let user = auth.currentUser;
         let uid = null;
         
-        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        // if Firebase user is null, try to get UID from AsyncStorage
         if (!user) {
           uid = await AsyncStorage.getItem('userUID');
           console.log('🏠 Firebase user is null, using UID from AsyncStorage:', uid);
@@ -71,7 +73,7 @@ export default function HomePage({ navigation, route }) {
           }
         }
       } catch (error) {
-        console.log('獲取用戶名失敗:', error);
+        console.log('failed to get username:', error);
         setBubbleText("Hi! I'm moodee, your personal coach.");
       }
     };
@@ -79,7 +81,7 @@ export default function HomePage({ navigation, route }) {
     fetchUsername();
   }, []);
 
-  // 取代原本的 fetchUsernameAndWelcome useEffect
+  // replace the original fetchUsernameAndWelcome useEffect
   useEffect(() => {
     const fetchHomeBubble = async () => {
       try {
@@ -88,7 +90,7 @@ export default function HomePage({ navigation, route }) {
         let uid = null;
         let userName = '';
         
-        // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+        // if Firebase user is null, try to get UID from AsyncStorage
         if (!user) {
           uid = await AsyncStorage.getItem('userUID');
           console.log('🏠 Firebase user is null, using UID from AsyncStorage for bubble:', uid);
@@ -104,50 +106,105 @@ export default function HomePage({ navigation, route }) {
             setUsername(userName);
           }
           
-          // // 暫時關閉 Gemini 功能，使用固定訊息
-          // setBubbleText(`Hi! ${userName}, I'm moodee, your personal coach.`);
-          // setLoading(false);
-          
-          // 原本的 Gemini 功能（已註解）
-          
-          setLoading(true);
-          // 1. check completions/{today}
-          const today = dayjs().format('YYYY-MM-DD');
-          const completionDoc = await getDoc(doc(db, 'users', uid, 'completions', today));
-          if (completionDoc.exists() && completionDoc.data().completed) {
-            // 2. check moodRecords where date === today
-            const moodRecordsCol = collection(db, `users/${uid}/moodRecords`);
-            const snapshot = await getDocs(moodRecordsCol);
-            let todayRecord = null;
-            snapshot.forEach(docSnap => {
-              const data = docSnap.data();
-              if (data.date === today) {
-                todayRecord = data;
-              }
-            });
-            if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
-              // call Gemini to generate homepage message
-              const msg = await getMoodeeMessageGemini({
-                emotion: todayRecord.emotion,
-                reasons: todayRecord.reasons,
-                positiveRatio: todayRecord.positiveRatio || '',
-                reactionTime: todayRecord.reactionTime || '',
-                tasks: todayRecord.tasks || '',
-                type: 'homepage',
-                username: userName,
-              });
-              setBubbleText(limitWords(msg));
-            } else {
-              // no today's detailed content, fallback welcome
-              const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
-              setBubbleText(limitWords(welcomeMsg));
-            }
-          } else {
-            // not completed, show welcome
-            const welcomeMsg = await getMoodeeMessageGemini({ type: 'welcome', username: userName });
-            setBubbleText(limitWords(welcomeMsg));
-          }
+          // first show basic welcome message, so user can see the page
+          setBubbleText(`Hi! ${userName}, I'm moodee, your personal coach.`);
           setLoading(false);
+          
+          // then asynchronously get detailed Gemini message
+          setTimeout(async () => {
+            try {
+              // first show thinking message
+              setBubbleText(getDefaultMessage('thinking'));
+              
+              // 1. check completions/{today}
+              const today = dayjs().format('YYYY-MM-DD');
+              const completionDoc = await getDoc(doc(db, 'users', uid, 'completions', today));
+              if (completionDoc.exists() && completionDoc.data().completed) {
+                // 2. check moodRecords where date === today
+                const moodRecordsCol = collection(db, `users/${uid}/moodRecords`);
+                const snapshot = await getDocs(moodRecordsCol);
+                let todayRecord = null;
+                snapshot.forEach(docSnap => {
+                  const data = docSnap.data();
+                  if (data.date === today) {
+                    todayRecord = data;
+                  }
+                });
+                if (todayRecord && todayRecord.emotion && todayRecord.reasons) {
+                  // show analyzing emotion message
+                  setBubbleText(getDefaultMessage('emotion', todayRecord.emotion));
+                  
+                  // get user statistics data
+                  let userStats = null;
+                  try {
+                    const statistics = await getUserStatistics(uid);
+                    userStats = statistics;
+                  } catch (error) {
+                    console.log('Failed to get user stats for Gemini:', error);
+                  }
+
+                  // check if there is custom reason
+                  const DEFAULT_REASONS = [
+                    'Health & Energy', 'Motivation', 'Feeling overwhelmed', 'Sleep', 'Routine',
+                    'Interactions with others', 'Self-awareness', 'Overthinking', 'Weather',
+                    'Comparisons & Social media', 'Expectations & Pressure', 'Work', 'Studies',
+                    'Unexpected events', 'Just feeling this way', 'Not sure yet', 'Something else'
+                  ];
+                  function extractCustomReason(reasons) {
+                    if (!Array.isArray(reasons)) return '';
+                    const custom = reasons.find(r => r.startsWith('Something else:'));
+                    if (custom) return custom.replace('Something else:', '').trim();
+                    return reasons.find(r => !DEFAULT_REASONS.includes(r));
+                  }
+                  const customReason = extractCustomReason(todayRecord.reasons);
+
+                  // call Gemini to generate homepage message
+                  let msg = '';
+                  if (customReason) {
+                    msg = await getMoodeeMessageGemini({
+                      type: 'custom',
+                      emotion: todayRecord.emotion,
+                      userReason: customReason,
+                      username: userName,
+                      userStats: userStats,
+                    });
+                  } else {
+                    msg = await getMoodeeMessageGemini({
+                      type: 'homepage',
+                      emotion: todayRecord.emotion,
+                      reasons: todayRecord.reasons.join(', '),
+                      positiveRatio: todayRecord.positiveRatio || '',
+                      reactionTime: todayRecord.reactionTime || '',
+                      tasks: todayRecord.tasks || '',
+                      username: userName,
+                      userStats: userStats,
+                    });
+                  }
+                  setBubbleText(limitWords(msg));
+                } else {
+                  // no today's detailed content, fallback welcome
+                  setBubbleText(getDefaultMessage('welcome'));
+                  const welcomeMsg = await getMoodeeMessageGemini({ 
+                    type: 'welcome', 
+                    username: userName 
+                  });
+                  setBubbleText(limitWords(welcomeMsg));
+                }
+              } else {
+                // not completed, show welcome
+                setBubbleText(getDefaultMessage('welcome'));
+                const welcomeMsg = await getMoodeeMessageGemini({ 
+                  type: 'welcome', 
+                  username: userName 
+                });
+                setBubbleText(limitWords(welcomeMsg));
+              }
+            } catch (error) {
+              console.log('failed to get HomePage Gemini message:', error);
+              // keep the original welcome message
+            }
+          }, 500); // delay 500ms so user can see the basic page first
+          
         } else {
           // no user login, use default message
           setBubbleText("Hi! I'm moodee, your personal coach.");
@@ -160,10 +217,11 @@ export default function HomePage({ navigation, route }) {
         setLoading(false);
       }
     };
+    
     fetchHomeBubble();
   }, []);
 
-  // 初始化 first_login_date 並產生 stamps
+  // initialize first_login_date and generate stamps
   useEffect(() => {
     const initStamps = async () => {
       try {
@@ -208,21 +266,21 @@ export default function HomePage({ navigation, route }) {
           firstLogin = createdAt || dayjs().format('YYYY-MM-DD');
           await AsyncStorage.setItem('first_login_date', firstLogin);
         } else {
-          // 取得 uid
+          // get uid
           const auth = getAuth();
           let user = auth.currentUser;
           if (user) {
             uid = user.uid;
           } else {
-            // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+            // if Firebase user is null, try to get UID from AsyncStorage
             uid = await AsyncStorage.getItem('userUID');
             console.log('🏠 Firebase user is null, using UID from AsyncStorage for existing firstLogin:', uid);
           }
         }
         setFirstLoginDate(firstLogin);
-        // 產生 20 天 stamps
+        // generate 20 days stamps
         const stampsArr = generateStampsFrom(firstLogin);
-        // Firestore 取得完成狀態
+        // get completion status from Firestore
         let completedMap = {};
         if (uid) {
           const completionsCol = collection(db, 'users', uid, 'completions');
@@ -233,7 +291,7 @@ export default function HomePage({ navigation, route }) {
             }
           });
         }
-        // 合併狀態
+        // merge status
         const updatedStamps = stampsArr.map(stamp => ({
           ...stamp,
           completed: !!completedMap[stamp.key],
@@ -296,25 +354,49 @@ export default function HomePage({ navigation, route }) {
     ]).start();
   }, []);
 
-  // 檢查是否有遊戲完成資料，如果有則生成教練建議並標記完成
+  // check if there is game completion data, if so, generate coach advice and mark as completed
   useEffect(() => {
     const gameData = route.params?.gameCompleted;
     if (gameData) {
       generateCoachMessage(gameData);
-      // 取得今天的 key
+      // get today's key
       const todayKey = dayjs().format('YYYY-MM-DD');
       markDayAsCompleted(todayKey);
+      
+      // update statistics data
+      const updateStats = async () => {
+        try {
+          const auth = getAuth();
+          let user = auth.currentUser;
+          let uid = null;
+          
+          if (!user) {
+            uid = await AsyncStorage.getItem('userUID');
+          } else {
+            uid = user.uid;
+          }
+          
+          if (uid) {
+            await updateStatisticsAfterGame(uid);
+            console.log('📊 Statistics updated after game completion');
+          }
+        } catch (error) {
+          console.error('📊 Error updating statistics:', error);
+        }
+      };
+      
+      updateStats();
     }
   }, [route.params]);
 
-  // 完成 stamp 後，更新狀態（Firestore 版）
+  // after stamp is completed, update status (Firestore version)
   const markDayAsCompleted = async (dateKey) => {
     try {
       const auth = getAuth();
       let user = auth.currentUser;
       let uid = null;
       
-      // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+      // if Firebase user is null, try to get UID from AsyncStorage
       if (!user) {
         uid = await AsyncStorage.getItem('userUID');
         console.log('🏠 Firebase user is null, using UID from AsyncStorage for markDayAsCompleted:', uid);
@@ -336,14 +418,14 @@ export default function HomePage({ navigation, route }) {
     }
   };
 
-  // 清除某天的完成狀態（Firestore 版）
+  // clear the completion status of a specific day (Firestore version)
   const clearDayCompletion = async (dateKey) => {
     try {
       const auth = getAuth();
       let user = auth.currentUser;
       let uid = null;
       
-      // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+      // if Firebase user is null, try to get UID from AsyncStorage
       if (!user) {
         uid = await AsyncStorage.getItem('userUID');
         console.log('🏠 Firebase user is null, using UID from AsyncStorage for clearDayCompletion:', uid);
@@ -365,24 +447,28 @@ export default function HomePage({ navigation, route }) {
     }
   };
 
-  // 生成教練建議
+  // generate coach advice
   const generateCoachMessage = async (gameData) => {
     setLoading(true);
     try {
-      // // 暫時關閉 Gemini 功能，使用固定訊息
+      // // temporarily close Gemini feature, use fixed message
       // setBubbleText("Great job completing the training! Keep up the good work!");
-      // setIsSaved(false); // 重置保存狀態
+      // setIsSaved(false); // reset save status
       
-      // 原本的 Gemini 功能（已註解）
+      // original Gemini feature (commented out)
       
       const message = await getMoodeeMessageGemini({
+        type: 'game',
         emotion: gameData.selectedEmotion,
-        reasons: gameData.selectedReasons,
+        reasons: gameData.selectedReasons.join(', '),
         gameCompleted: true,
+        positiveRatio: gameData.positiveRatio || '',
+        reactionTime: gameData.reactionTime || '',
+        tasks: gameData.tasks || '',
         username: username,
       });
       setBubbleText(limitWords(message));
-      setIsSaved(false); // 重置保存狀態
+      setIsSaved(false); // reset save status
       
     } catch (error) {
       setBubbleText("Great job completing the training! Keep up the good work!");
@@ -391,7 +477,7 @@ export default function HomePage({ navigation, route }) {
     setLoading(false);
   };
 
-  // 保存語句到 Quotes
+  // save sentence to Quotes
   const handleSaveQuote = async () => {
     if (!bubbleText || bubbleText === "Hi! I'm moodee, your personal coach." || bubbleText.includes("Hi!") && bubbleText.includes("I'm moodee")) {
       Alert.alert('Cannot Save', 'Only Moodee\'s advice messages can be saved!');
@@ -407,9 +493,18 @@ export default function HomePage({ navigation, route }) {
     }
   };
 
+  // typewriter effect
+  // remove typewriter effect, directly show text
+  useEffect(() => {
+    if (bubbleText) {
+      setDisplayedText(bubbleText);
+    }
+  }, [bubbleText]);
+
+
   const completedCount = stamps.filter(d => d.completed).length;
 
-  // 計算滾動區高度：stamp數量*stamp高度+間距
+  // calculate scroll content height: stamp count * stamp height + spacing
   const scrollContentHeight = SCREEN_WIDTH * 0.18 * stamps.length + SCREEN_HEIGHT * 0.071 * (stamps.length - 1) + SCREEN_HEIGHT * 0.3;
 
   const handleGameStart = async (stamp) => {
@@ -444,8 +539,24 @@ export default function HomePage({ navigation, route }) {
   }, [stamps.length]);
 
     //   useEffect(() => {
-    //     AsyncStorage.clear(); // 或 removeItem
+    //     AsyncStorage.clear(); // or removeItem
     // }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        {/* simple skeleton screen */}
+        <View style={styles.skeletonHeader} />
+        <View style={styles.skeletonBubble} />
+        <View style={styles.skeletonStamps} />
+        <ActivityIndicator 
+          size="large" 
+          color="#A8AFBC" 
+          style={styles.loadingIndicator}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -485,8 +596,11 @@ export default function HomePage({ navigation, route }) {
         ))}
       </ScrollView>
 
-      {/* 星星與數字 */}
-      <View style={styles.starContainer}>
+        {/* stars and numbers */}
+      <TouchableOpacity 
+        style={styles.starContainer}
+
+      >
         <Image
           source={require('../../../assets/images/HomePage/Star.png')}
           style={styles.star}
@@ -494,10 +608,10 @@ export default function HomePage({ navigation, route }) {
         <View style={styles.starNumShadowWrap}>
           <Text style={styles.starNum}>{completedCount}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {/* 對話匡動畫分開，內容可動態變化 */}
-      {/* 1. 對話匡內容改為可滑動，並設固定高度 */}
+      {/* dialog box animation, content can be dynamically changed */}
+      {/* 1. change the dialog box content to be scrollable, and set fixed height */}
       <Animated.View style={[
         styles.bubbleContainer,
         { opacity: bubbleAnim }
@@ -516,7 +630,9 @@ export default function HomePage({ navigation, route }) {
               />
             </TouchableOpacity>
             <ScrollView style={{ maxHeight: SCREEN_HEIGHT * 0.16, minHeight: SCREEN_HEIGHT * 0.02 }}>
-              <Text style={styles.bubbleText}>{bubbleText}</Text>
+              <Text style={styles.bubbleText}>
+                {displayedText}
+              </Text>
             </ScrollView>
           </View>
         </View>
@@ -532,7 +648,7 @@ export default function HomePage({ navigation, route }) {
         />
       </Animated.View>
 
-      {/* 底部導航列 */}
+      {/* bottom navigation bar */}
       <View style={styles.navBar}>
         <NavIcon
           icon={require('../../../assets/images/HomePage/Home.png')}
@@ -585,7 +701,7 @@ export default function HomePage({ navigation, route }) {
   );
 }
 
-// 2. setBubbleText 時自動限制20字（英文單字數）
+// 2. setBubbleText automatically limit 20 words (English word count)
 function limitWords(text, maxWords = 20) {
   if (!text) return '';
   const words = text.split(/\s+/);
@@ -593,7 +709,7 @@ function limitWords(text, maxWords = 20) {
   return words.slice(0, maxWords).join(' ') + '...';
 }
 
-// 底部導航icon元件
+// bottom navigation icon component
 function NavIcon({ icon, active, onPress }) {
   return (
     <TouchableOpacity onPress={onPress} style={styles.navIcon}>
@@ -717,7 +833,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: SCREEN_WIDTH * 0.06,
     paddingVertical: SCREEN_HEIGHT * 0.02,
-    width: SCREEN_WIDTH * 0.51, // 固定寬度
+    width: SCREEN_WIDTH * 0.51, // fixed width
     minHeight: SCREEN_HEIGHT * 0.07,
     justifyContent: 'center',
     position: 'relative',
@@ -726,9 +842,9 @@ const styles = StyleSheet.create({
     color: '#41424A',
     fontSize: SCREEN_WIDTH * 0.042,
     fontWeight: '500',
-    fontFamily: 'ArialUnicodeMS',
-    flexWrap: 'wrap', // 讓文字自動換行
-    paddingRight: SCREEN_WIDTH * 0.08, // 為愛心按鈕留出空間
+    fontFamily: undefined, // use system default font
+    flexWrap: 'wrap', // make text automatically wrap
+    paddingRight: SCREEN_WIDTH * 0.08, // leave space for heart button
   },
   heartButton: {
     position: 'absolute',
@@ -830,4 +946,35 @@ const styles = StyleSheet.create({
     height: 24,
     alignSelf: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgb(194,227,168)',
+  },
+  skeletonHeader: {
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.1,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 10,
+    marginBottom: SCREEN_HEIGHT * 0.02,
+  },
+  skeletonBubble: {
+    width: SCREEN_WIDTH * 0.8,
+    height: SCREEN_HEIGHT * 0.1,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 10,
+    marginBottom: SCREEN_HEIGHT * 0.02,
+  },
+  skeletonStamps: {
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.2,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 10,
+    marginBottom: SCREEN_HEIGHT * 0.02,
+  },
+  loadingIndicator: {
+    marginTop: SCREEN_HEIGHT * 0.05,
+  },
+
 }); 

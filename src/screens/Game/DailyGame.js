@@ -24,7 +24,7 @@ export default function DailyGame() {
   const navigation = useNavigation();
   const route = useRoute();
   const { schedule: routeSchedule, currentStep = 0, selectedEmotion, selectedReasons, gameResults: routeGameResults = [] } = route.params || {};
-  const gameResults = routeGameResults; // 不用 useState
+  const gameResults = routeGameResults; // no need to useState
   const [schedule, setSchedule] = useState(routeSchedule);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function DailyGame() {
       if (!userDoc.exists()) return { group: 'A', days: 1 };
       const data = userDoc.data();
       const group = data.group || 'A';
-      // 修正 createdAt 解析
+      // fix createdAt parsing
       let createdAt;
       if (data.createdAt?.toDate) {
         createdAt = data.createdAt.toDate();
@@ -45,16 +45,12 @@ export default function DailyGame() {
         createdAt = new Date();
       }
       const now = new Date();
-      // 跨日就算一天
+      // count as one day if it is across days
       const createdDate = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
       const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const days = Math.floor((nowDate - createdDate) / (1000 * 60 * 60 * 24)) + 1;
-      // 加入 debug log
-      console.log('【DEBUG】group:', group);
-      console.log('【DEBUG】createdAt:', createdAt, 'instanceof Date:', createdAt instanceof Date);
-      console.log('【DEBUG】now:', now);
-      console.log('【DEBUG】days:', days);
-      console.log('【DEBUG】raw createdAt from Firestore:', data.createdAt);
+      // add debug log
+      
       return { group, days };
     }
 
@@ -63,13 +59,13 @@ export default function DailyGame() {
       if (!finalSchedule) {
         const { group, days } = await getUserGroupAndDays();
         const version = getTodayVersion(group, days);
-        // 加入 debug log
-        console.log('【DEBUG】getTodayVersion:', group, days, '=>', version);
+        // add debug log
+
         finalSchedule = await getOrCreateTodaySchedule({ userDays: days, version });
         setSchedule(finalSchedule);
       }
       if (!finalSchedule || currentStep >= finalSchedule.length) {
-        // 彙整結果
+        // summarize results
         let positiveCount = 0;
         let totalCount = 0;
         let totalReactionTime = 0;
@@ -108,11 +104,11 @@ export default function DailyGame() {
         schedule: finalSchedule,
         selectedEmotion,
         selectedReasons,
-        gameResults, // 傳遞 gameResults
+        gameResults, // pass gameResults
       });
     }
     init();
-  }, [schedule, currentStep, gameResults]); // 依賴 gameResults
+  }, [schedule, currentStep, gameResults]); // depend on gameResults
 
-  return null; // 不顯示畫面，僅負責跳轉
+  return null; // do not show screen, only responsible for redirecting
 }

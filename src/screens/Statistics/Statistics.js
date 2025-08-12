@@ -5,20 +5,22 @@ import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firesto
 import { db } from '../../services/firebase';
 import RNPickerSelect from 'react-native-picker-select';
 import dayjs from 'dayjs';
-import { getMoodeeMessageGemini } from '../../services/gemini';
+import { getMoodeeMessageGemini, getDefaultMessage } from '../../services/gemini';
+import { getUserStatisticsLocal } from '../../services/localStatistics';
 import { Easing } from 'react-native';
 import { useQuotes } from '../../context/QuotesContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// 獲取當前用戶 UID 的輔助函數
+// get current user UID helper function
 async function getCurrentUID() {
   const auth = getAuth();
   let user = auth.currentUser;
   let uid = null;
   
-  // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+  // if Firebase user is null, try to get UID from AsyncStorage
   if (!user) {
     uid = await AsyncStorage.getItem('userUID');
     console.log('📊 getCurrentUID - Firebase user is null, using UID from AsyncStorage:', uid);
@@ -30,7 +32,7 @@ async function getCurrentUID() {
   return uid;
 }
 
-// 1. 角色順序 anger, fear, disgust, surprise, sadness, happiness
+// 1. emotion order: anger, fear, disgust, surprise, sadness, happiness
 const EMOTIONS = [
   { key: 'anger', label: 'Anger', img: require('../../../assets/images/Statistics/anger2.png'), bar: '#E27367', icon: require('../../../assets/images/Statistics/anger1.png') },
   { key: 'fear', label: 'Fear', img: require('../../../assets/images/Statistics/fear2.png'), bar: '#8CC19B', icon: require('../../../assets/images/Statistics/fear1.png') },
@@ -52,10 +54,13 @@ export default function StatisticsScreen({ navigation }) {
   const [emotionStats, setEmotionStats] = useState({});
   const [records, setRecords] = useState([]);
   const [bubbleText, setBubbleText] = useState('');
+  const [displayedText, setDisplayedText] = useState('');
+
   const [username, setUsername] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(dayjs().month() + 1); // month() 回傳 0~11，所以要 +1
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().month() + 1); // month() returns 0~11, so add 1
   const [selectedYear, setSelectedYear] = useState(dayjs().year());
-  // 情緒堆疊動畫
+
+  // emotion stack animation
   const emotionAnims = useRef(EMOTIONS.map(() => ({
     y: new Animated.Value(-200),
     x: new Animated.Value(0),
@@ -68,7 +73,7 @@ export default function StatisticsScreen({ navigation }) {
     { x: SCREEN_WIDTH * 0.31, y: SCREEN_HEIGHT * 0.11 },  // sadness
     { x: -SCREEN_WIDTH * 0.03, y: SCREEN_HEIGHT * 0.245 },  // happiness
   ];
-  const emotionAngles = [-18, 12, -8, 20, -10, 8]; // 依角色順序
+  const emotionAngles = [-18, 12, -8, 20, -10, 8]; // according to the order of the characters
   const moodeeAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const bubbleAnim = useRef(new Animated.Value(0)).current;
   const [moodeeAnimated, setMoodeeAnimated] = useState(false);
@@ -86,7 +91,7 @@ export default function StatisticsScreen({ navigation }) {
     // 可加提示訊息
   };
 
-  // 獲取用戶名
+  // get username
   useEffect(() => {
     const fetchUsername = async () => {
       try {
@@ -107,19 +112,19 @@ export default function StatisticsScreen({ navigation }) {
     fetchUsername();
   }, []);
 
-  // 初始化時獲取數據
+  // get data when initializing
   useEffect(() => {
     if (username) {
       fetchData();
     }
   }, [username]);
 
-  // 監聽 scroll 事件
+  // listen to scroll event
   const handleScroll = (e) => {
     scrollY.current = e.nativeEvent.contentOffset.y;
     if (!moodeeAnimated && moodeeRef.current) {
       moodeeRef.current.measure((fx, fy, width, height, px, py) => {
-        // py: moodee 距離螢幕頂端的座標
+        // py: moodee's distance from the top of the screen
         if (py < SCREEN_HEIGHT / 2 && py + height > SCREEN_HEIGHT / 4) {
           setMoodeeAnimated(true);
           Animated.timing(moodeeAnim, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => {
@@ -130,21 +135,21 @@ export default function StatisticsScreen({ navigation }) {
     }
   };
 
-  // 3. 角色掉落動畫依新順序依序執行
+  // 3. emotion falling animation in the new order
   useEffect(() => {
     fetchData();
     EMOTIONS.forEach((e, i) => {
       emotionAnims[i].y.setValue(-200);
       emotionAnims[i].x.setValue(0);
       setTimeout(() => {
-        // 1. 先用 timing 做重力加速度掉落
+          // 1. first use timing to do gravity acceleration falling
         Animated.timing(emotionAnims[i].y, {
-          toValue: emotionTargets[i].y + 30, // 先超過目標一點
+          toValue: emotionTargets[i].y + 30, // first exceed the target a little
           duration: 700,
           easing: Easing.bezier(0.2, 0.8, 0.2, 1),
           useNativeDriver: true,
         }).start(() => {
-          // 2. 再 spring 彈跳回最終位置
+          // 2. then spring to the final position
           Animated.spring(emotionAnims[i].y, {
             toValue: emotionTargets[i].y,
             useNativeDriver: true,
@@ -163,6 +168,37 @@ export default function StatisticsScreen({ navigation }) {
     setMoodeeAnimated(false);
   }, [selectedMonth, selectedYear]);
 
+  // preload Gemini message
+  useEffect(() => {
+    const preloadGeminiMessage = async () => {
+      if (username && Object.keys(emotionStats).length > 0) {
+        // immediately show the intelligent default message
+        setBubbleText(getDefaultMessage('statistics'));
+        
+        try {
+          const msg = await getMoodeeMessageGemini({ 
+            type: 'statistics',
+            stats: emotionStats, 
+            username 
+          });
+          setBubbleText(msg);
+        } catch (error) {
+          console.log('Failed to preload Moodee message:', error);
+          setBubbleText('Great job tracking your emotions this month! Keep up the good work.');
+        }
+      }
+    };
+    
+    preloadGeminiMessage();
+  }, [username, emotionStats]);
+
+
+  useEffect(() => {
+    if (bubbleText) {
+      setDisplayedText(bubbleText);
+    }
+  }, [bubbleText]);
+
   async function fetchData() {
     setLoading(true);
     try {
@@ -176,6 +212,11 @@ export default function StatisticsScreen({ navigation }) {
       console.log('🔍 fetchData - Current user UID:', uid);
       console.log('🔍 fetchData - Current username state:', username);
       
+      // use local statistics service to get statistics data
+      const userStats = await getUserStatisticsLocal();
+      console.log('📊 User statistics from local service:', userStats);
+      
+      // get the monthly mood records
       const start = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
       const end = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-31`;
       console.log('Query date range:', start, 'to', end);
@@ -192,19 +233,35 @@ export default function StatisticsScreen({ navigation }) {
       console.log('🔍 fetchData - Number of documents found:', snap.docs.length);
       
       setRecords(data);
-      // 統計
+      
+      // count the monthly emotions
       const stats = {};
       EMOTIONS.forEach(e => { stats[e.key] = 0; });
       data.forEach(r => { 
         console.log('Processing record:', r.emotion, r.date, 'username:', r.username);
         if (stats[r.emotion] !== undefined) stats[r.emotion]++; 
       });
-      console.log('Statistics result:', stats);
+      console.log('Monthly statistics result:', stats);
       setEmotionStats(stats);
-      // Moodee 語句
-      const msg = await getMoodeeMessageGemini({ stats, username });
-      setBubbleText(msg);
+      
+      // first show the basic data, so the user can see the page
       setLoading(false);
+      
+      // then asynchronously get Moodee message
+      setTimeout(async () => {
+        try {
+          const msg = await getMoodeeMessageGemini({ 
+            type: 'statistics',
+            stats, 
+            username 
+          });
+          setBubbleText(msg);
+        } catch (error) {
+          console.log('Failed to get Moodee message:', error);
+          setBubbleText('Great job tracking your emotions this month! Keep up the good work.');
+        }
+      }, 100);
+      
     } catch (e) {
       console.log('Statistics error:', e);
       console.log('Error details:', e.message);
@@ -212,7 +269,9 @@ export default function StatisticsScreen({ navigation }) {
     }
   }
 
-  // 日曆資料
+
+
+  // calendar data
   const { days, firstDay } = getMonthDays(selectedYear, selectedMonth);
   const calendar = [];
   let day = 1 - firstDay;
@@ -227,7 +286,7 @@ export default function StatisticsScreen({ navigation }) {
     }
     calendar.push(week);
   }
-  // 產生下拉選單選項
+  // generate dropdown menu options
   const monthItems = Array.from({ length: 12 }, (_, i) => ({ 
     label: dayjs().month(i).format('MMMM'), 
     value: i + 1 
@@ -259,29 +318,45 @@ export default function StatisticsScreen({ navigation }) {
     return (
       <View style={{ 
         flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
         backgroundColor: '#F7F5EF' 
       }}>
-        <ActivityIndicator size="large" color="#A8AFBC" />
-        <Text style={{ 
-          marginTop: 16, 
-          color: '#A8AFBC', 
-          fontSize: 16,
-          fontFamily: 'ArialUnicodeMS'
-        }}>
-          Loading...
-        </Text>
+        {/* skeleton screen */}
+        <View style={styles.skeletonContainer}>
+          {/* title skeleton */}
+          <View style={styles.skeletonTitle} />
+          
+          {/* month picker skeleton */}
+          <View style={styles.skeletonMonthPicker} />
+          
+          {/* emotion statistics skeleton */}
+          <View style={styles.skeletonEmotionStats}>
+            {EMOTIONS.map((_, index) => (
+              <View key={index} style={styles.skeletonEmotionItem} />
+            ))}
+          </View>
+          
+          {/* calendar skeleton */}
+          <View style={styles.skeletonCalendar} />
+          
+          {/* Moodee skeleton */}
+          <View style={styles.skeletonMoodee} />
+        </View>
+        
+        <ActivityIndicator 
+          size="large" 
+          color="#A8AFBC" 
+          style={{ position: 'absolute', top: '50%', left: '50%', marginLeft: -20, marginTop: -20 }}
+        />
       </View>
     );
   }
 
-  // 2. 角色 scale 根據情緒比例
+  // 2. character scale according to the emotion ratio
   const max = Math.max(...Object.values(emotionStats), 1);
 
   const monthName = dayjs().month(selectedMonth - 1).format('MMMM');
 
-  // 檢查是否有數據
+  // check if there is data
   const hasData = Object.values(emotionStats).some(count => count > 0);
 
   return (
@@ -292,7 +367,7 @@ export default function StatisticsScreen({ navigation }) {
         scrollEventThrottle={16}
         onScroll={handleScroll}
       >
-        {/* 1. 情緒比例堆疊區 */}
+        {/* 1. emotion ratio stack area */}
         <View style={styles.topContainer}>
           <Text style={styles.title}>Your Emotional Journey</Text>
           <View style={styles.emotionStack}>
@@ -323,7 +398,9 @@ export default function StatisticsScreen({ navigation }) {
             })}
           </View>
         </View>
-        {/* 2. Your Statistics 直條圖區 */}
+
+
+        {/* 3. Your Statistics bar chart area */}
         <Text style={styles.statisticsTitle}>Your Statistics</Text>
         {!hasData ? (
           <View style={{ 
@@ -343,7 +420,7 @@ export default function StatisticsScreen({ navigation }) {
           </View>
         ) : (
           <View style={styles.barChartWrap}>
-            {/* 左側比例文字 */}
+            {/* left ratio text */}
             <View style={styles.barChartLabelCol}>
               {[100, 75, 50, 25, 0].map(v => (
                 <Text key={v} style={styles.barChartLabel}>{v}</Text>
@@ -377,16 +454,16 @@ export default function StatisticsScreen({ navigation }) {
             </View>
           </View>
         )}
-        {/* 4. Mood Diary 區 */}
+        {/* 4. Mood Diary area */}
         <View style={styles.diaryWrap}>
-          {/* moodee 圖片動畫滑入 */}
+          {/* moodee image animation slide in */}
           <Animated.View
             ref={moodeeRef}
             style={[styles.moodeeOverlayImg, { transform: [{ translateX: moodeeAnim }] }]}
             onLayout={() => {}}
           >
             <Image source={require('../../../assets/images/HomePage/moodee.png')} style={{ width: 250, height: 250, resizeMode: 'contain' }} />
-            {/* 對話匡絕對定位在 moodee 右上 */}
+            {/* dialog box absolutely positioned on the top right of moodee */}
             <Animated.View style={[styles.bubbleContainer, { opacity: bubbleAnim }]}> 
               <View style={styles.bubbleShadowWrap}>
                 <View style={styles.bubble}>
@@ -398,7 +475,7 @@ export default function StatisticsScreen({ navigation }) {
                   </TouchableOpacity>
                   <ScrollView>
                     <Text style={styles.bubbleText}>
-                      {hasData ? (bubbleText || 'Keep going! Every day is a new start.') : 'Start recording your emotions and let\'s grow together!'}
+                      {displayedText}
                     </Text>
                   </ScrollView>
                 </View>
@@ -423,13 +500,13 @@ export default function StatisticsScreen({ navigation }) {
               />
             </Pressable>
           </View>
-          {/* 星期標題 */}
+          {/* week title */}
           <View style={styles.weekRow}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
               <Text key={d + i} style={styles.weekDay}>{d}</Text>
             ))}
           </View>
-                    {/* 日曆格 */}
+          {/* calendar grid */}
           <View style={styles.calendarGrid}>
             {calendar.map((week, wi) => (
               <View key={wi} style={styles.calendarRow}>
@@ -447,7 +524,7 @@ export default function StatisticsScreen({ navigation }) {
             ))}
           </View>
         </View>
-        {/* 月份年份選單 Modal */}
+        {/* month and year picker modal */}
         <Modal visible={monthPickerVisible} transparent animationType="fade">
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: 260 }}>
@@ -480,7 +557,7 @@ export default function StatisticsScreen({ navigation }) {
           </View>
         </Modal>
       </ScrollView>
-      {/* 底部導航列 */}
+      {/* bottom navigation bar */}
       <View style={styles.navBar}>
         <NavIcon
           icon={require('../../../assets/images/HomePage/Home.png')}
@@ -626,12 +703,13 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_HEIGHT * 0.18, 
   },
   bubbleText: {
-    color: '#41424A',
-    fontSize: SCREEN_WIDTH * 0.045,
-    fontWeight: '500',
-    fontFamily: 'ArialUnicodeMS',
-    flexWrap: 'wrap',
+    fontSize: SCREEN_WIDTH * 0.04,
+    color: '#4A4A4A',
+    // textAlign: 'center',
+    fontFamily: undefined, // 使用系統默認字體
+    lineHeight: SCREEN_WIDTH * 0.06,
   },
+
   moodeeOverlayImg: {
     position: 'absolute',
     width: SCREEN_WIDTH * 0.55,
@@ -758,6 +836,53 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     zIndex: 20,
+  },
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: '#F7F5EF',
+    paddingTop: SCREEN_HEIGHT * 0.05,
+    paddingLeft: SCREEN_WIDTH * 0.04,
+  },
+  skeletonTitle: {
+    width: SCREEN_WIDTH * 0.39,
+    height: SCREEN_HEIGHT * 0.07,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    marginTop: SCREEN_HEIGHT * 0.07,
+  },
+  skeletonMonthPicker: {
+    width: SCREEN_WIDTH * 0.45,
+    height: SCREEN_HEIGHT * 0.05,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    marginTop: SCREEN_HEIGHT * 0.05,
+    marginBottom: SCREEN_HEIGHT * 0.013,
+  },
+  skeletonEmotionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SCREEN_HEIGHT * 0.05,
+    marginBottom: SCREEN_HEIGHT * 0.013,
+  },
+  skeletonEmotionItem: {
+    width: SCREEN_WIDTH * 0.18,
+    height: SCREEN_HEIGHT * 0.18,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+  },
+  skeletonCalendar: {
+    width: SCREEN_WIDTH * 0.8,
+    height: SCREEN_HEIGHT * 0.2,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    marginTop: SCREEN_HEIGHT * 0.026,
+  },
+  skeletonMoodee: {
+    width: SCREEN_WIDTH * 0.55,
+    height: SCREEN_WIDTH * 0.55,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    marginTop: SCREEN_HEIGHT * 0.23,
   },
 }); 
 

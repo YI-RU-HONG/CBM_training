@@ -8,7 +8,7 @@ import { db } from '../../services/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// 1. 建立配對陣列
+// 1. create matching array
 const IMAGE_PAIRS = [
   {
     positive: require('../../../assets/images/Game/CBM-A/visual/simple/CBM-A visual happy simple.png'),
@@ -50,7 +50,7 @@ export default function Game2Screen() {
   const currentStep = route.params?.currentStep ?? 0;
   const totalSteps = route.params?.totalSteps ?? 6;
 
-  // 取得 userDays
+  // get userDays
   const [userDays, setUserDays] = useState(1);
   useEffect(() => {
     async function fetchUserDays() {
@@ -61,7 +61,7 @@ export default function Game2Screen() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          // 修正 createdAt 解析
+          // fix createdAt parsing
           let createdAt;
           if (data.createdAt?.toDate) {
             createdAt = data.createdAt.toDate();
@@ -71,38 +71,36 @@ export default function Game2Screen() {
             createdAt = new Date();
           }
           const now = new Date();
-          // 跨日就算一天
+          // count as one day if it is across days
           const createdDate = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
           const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const diff = Math.floor((nowDate - createdDate) / (1000 * 60 * 60 * 24)) + 1;
-          console.log('【DEBUG】createdAt:', createdAt);
-          console.log('【DEBUG】now:', now);
-          console.log('【DEBUG】diff:', diff);
+          
           setUserDays(diff);
         }
       } catch (e) {
-        console.log('取得使用天數失敗', e);
+        console.log('failed to get user days', e);
       }
     }
     fetchUserDays();
   }, []);
 
-  // 根據 userDays 決定 level
+  // determine level based on userDays
   const level = React.useMemo(() => {
-    console.log('userDays:', userDays); // 除錯用
+    console.log('userDays:', userDays); // debug
     if (userDays >= 4 && userDays < 7) return 1;
     if (userDays >= 7) return 2;
     return 0;
   }, [userDays]);
 
-  // 題目圖片
+  // question image
   const pairIdx = questionIdx % IMAGE_PAIRS.length;
 
-  // 保留情緒與理由
+  // keep emotion and reasons
   const selectedEmotion = route.params?.selectedEmotion || 'Unknown';
   const selectedReasons = route.params?.selectedReasons || [];
 
-  // // 階段條數量
+  // // number of stages
   // const progressBarCount = 3;
 
   const [matrix, setMatrix] = useState([]);
@@ -110,7 +108,7 @@ export default function Game2Screen() {
   const [positivePos, setPositivePos] = useState({ row: 0, col: 0 });
   const [positiveImgIdx, setPositiveImgIdx] = useState(0);
 
-  // 只要 userDays/level/pairIdx 變動就重建 matrix
+  // rebuild matrix whenever userDays/level/pairIdx changes
   useEffect(() => {
     if (typeof level === 'number' && pairIdx >= 0) {
       generateMatrix(pairIdx);
@@ -120,7 +118,7 @@ export default function Game2Screen() {
 
   const generateMatrix = (idx) => {
     const size = LEVELS[level].size;
-    console.log('level:', level, 'size:', size); // 除錯用
+    console.log('level:', level, 'size:', size); // debug
     const posIdx = Math.floor(Math.random() * size * size);
     const posRow = Math.floor(posIdx / size);
     const posCol = posIdx % size;
@@ -144,7 +142,7 @@ export default function Game2Screen() {
   const handlePress = (r, c) => {
     if (r === positivePos.row && c === positivePos.col) {
       const reactionTime = Date.now() - startTime;
-      // 上傳結果
+      // upload result
       saveGame2BResult({
         emotion: selectedEmotion,
         reasons: selectedReasons,
@@ -154,8 +152,8 @@ export default function Game2Screen() {
         pos: positivePos,
         timestamp: Date.now(),
       });
-      // 新增：將本關結果 push 到 gameResults
-      const isPositive = true; // 找到正向臉
+        // add: push current game result to gameResults
+      const isPositive = true; // find positive face
       const taskName = 'Game2-1';
       navigation.replace('DailyGame', {
         schedule,
@@ -170,14 +168,14 @@ export default function Game2Screen() {
     }
   };
 
-  // 計算圖片大小（自適應，最多 90% 寬度）
+  // calculate image size (adaptive, maximum 90% width)
   const size = LEVELS[level].size;
   const matrixWidth = Math.min(SCREEN_WIDTH * 0.9, SCREEN_HEIGHT * 0.6);
   const imgSize = matrixWidth / size;
 
   return (
     <View style={styles.container}>
-      {/* 階段條 */}
+      {/* stage bar */}
       <View style={styles.progressBarWrap}>
         {[...Array(totalSteps)].map((_, i) => (
           <View
@@ -191,9 +189,9 @@ export default function Game2Screen() {
           />
         ))}
       </View>
-      {/* 標題 */}
+      {/* title */}
       <Text style={styles.title}>Find the happy face!</Text>
-      {/* 矩陣 */}
+      {/* matrix */}
       <View style={[styles.matrixWrap, { width: matrixWidth, height: matrixWidth }]}>
         {Array.isArray(matrix) && matrix.length > 0 ? (
           matrix.map((row, r) => (

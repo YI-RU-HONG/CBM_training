@@ -165,7 +165,7 @@ export default function Game2Screen() {
         pos: positivePos,
         timestamp: Date.now(),
       });
-      // 新增：將本關結果 push 到 gameResults
+      // add game result to gameResults
       const isPositive = true; // 找到正向臉
       const taskName = 'Game2';
       navigation.replace('DailyGame', {

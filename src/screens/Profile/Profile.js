@@ -7,18 +7,18 @@ import { db } from '../../services/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_MARGIN_H = 30 / SCREEN_WIDTH; // 30pt 自適應
+const CARD_MARGIN_H = 30 / SCREEN_WIDTH; // 30pt adaptive
 // const CARD_WIDTH = SCREEN_WIDTH - 2 * (SCREEN_WIDTH * CARD_MARGIN_H);
 // const CARD_HEIGHT = SCREEN_HEIGHT * 0.14;
 const ARROW_SIZE = SCREEN_WIDTH * 0.10;
 
-// 獲取當前用戶 UID 的輔助函數
+// get current user UID helper function
 async function getCurrentUID() {
   const auth = getAuth();
   let user = auth.currentUser;
   let uid = null;
   
-  // 如果 Firebase 用戶為 null，嘗試從 AsyncStorage 獲取 UID
+  // if Firebase user is null, try to get UID from AsyncStorage
   if (!user) {
     uid = await AsyncStorage.getItem('userUID');
     console.log('👤 getCurrentUID - Firebase user is null, using UID from AsyncStorage:', uid);
@@ -34,7 +34,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const [username, setUsername] = useState('User');
 
-  // 獲取用戶名
+  // get username
   useEffect(() => {
     const fetchUsername = async () => {
       try {
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
           }
         }
       } catch (error) {
-        console.log('獲取用戶名失敗:', error);
+        console.log('failed to get username:', error);
         setUsername('User');
       }
     };
@@ -58,7 +58,9 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 頭像與名稱 */}
+
+      
+      {/* avatar and name */}
       <View style={styles.avatarWrap}>
         <Image
           source={require('../../../assets/images/Profile/photo.png')}
@@ -66,7 +68,7 @@ export default function ProfileScreen() {
         />
         <Text style={styles.name}>{username}</Text>
       </View>
-      {/* 卡片區域 */}
+      {/* card area */}
       <View style={styles.cardsWrap}>
         {[{
           img: require('../../../assets/images/Profile/Safe quote.png'),
@@ -96,7 +98,7 @@ export default function ProfileScreen() {
           </View>
         ))}
       </View>
-      {/* 底部導航列 */}
+      {/* bottom navigation bar */}
       <View style={styles.navBar}>
         <NavIcon
           icon={require('../../../assets/images/HomePage/Home.png')}
@@ -143,6 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,250,237,1)', // UIColor(red: 1, green: 0.98, blue: 0.93, alpha: 1)
     alignItems: 'center',
   },
+
   avatarWrap: {
     alignItems: 'center',
     marginTop: SCREEN_HEIGHT * 0.09,
@@ -193,6 +196,20 @@ const styles = StyleSheet.create({
     width: ARROW_SIZE,
     height: ARROW_SIZE,
     resizeMode: 'contain',
+  },
+  adminBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  adminText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   navBar: {
     position: 'absolute',
