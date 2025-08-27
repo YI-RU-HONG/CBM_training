@@ -5,8 +5,8 @@
 This project is a master's thesis research on an emotional training iOS application, designed to provide users with daily emotional training tools, combining deep breathing exercises, emotion recording, and simple game modules, using LLM as a virtual coach to enhance interactivity and sustained engagement.
 
 ### 🎯 Research Objectives
-- **Research Subjects**: 12 participants
-- **Experimental Design**: A/B testing, divided into two groups of 6 participants each
+- **Research Subjects**: 10 participants
+- **Experimental Design**: A/B testing, divided into two groups of 5 participants each
 - **Experimental Duration**: 14-day testing period
 - **Group A**: Training game sequence: abababab...
 - **Group B**: Training game sequence: babababa...
@@ -34,7 +34,7 @@ This project is uploaded to the university's GitLab repository for thesis submis
 This is an iOS app designed to provide daily emotional training tools, combining deep breathing exercises, emotion recording, and simple game modules. The app uses LLM as a virtual coach to enhance interactivity and sustained engagement.
 
 ### Research Context
-- **Master's Thesis Project**: A/B testing with 12 participants
+- **Master's Thesis Project**: A/B testing with 10 participants
 - **Group A**: Training game sequence: abababab...
 - **Group B**: Training game sequence: babababa...
 - **Duration**: 14-day testing period
